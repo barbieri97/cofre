@@ -1,0 +1,210 @@
+/* ============================================================
+   Tema Cofre — Paleta Dark Premium
+   ============================================================ */
+
+:root {
+  /* ── Cores de Marca ───────────────────────────────────── */
+  --ion-color-primary: #10B981;
+  --ion-color-primary-rgb: 16, 185, 129;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #0ea371;
+  --ion-color-primary-tint: #28c090;
+
+  --ion-color-secondary: #6366F1;
+  --ion-color-secondary-rgb: 99, 102, 241;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255, 255, 255;
+  --ion-color-secondary-shade: #575ad4;
+  --ion-color-secondary-tint: #7375f3;
+
+  --ion-color-tertiary: #F59E0B;
+  --ion-color-tertiary-rgb: 245, 158, 11;
+  --ion-color-tertiary-contrast: #000000;
+  --ion-color-tertiary-shade: #d88b0a;
+  --ion-color-tertiary-tint: #f6a823;
+
+  --ion-color-success: #10B981;
+  --ion-color-success-rgb: 16, 185, 129;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-shade: #0ea371;
+  --ion-color-success-tint: #28c090;
+
+  --ion-color-warning: #F59E0B;
+  --ion-color-warning-rgb: 245, 158, 11;
+  --ion-color-warning-contrast: #000000;
+  --ion-color-warning-shade: #d88b0a;
+  --ion-color-warning-tint: #f6a823;
+
+  --ion-color-danger: #EF4444;
+  --ion-color-danger-rgb: 239, 68, 68;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #d23c3c;
+  --ion-color-danger-tint: #f15757;
+
+  --ion-color-medium: #6B7280;
+  --ion-color-medium-rgb: 107, 114, 128;
+  --ion-color-medium-contrast: #ffffff;
+  --ion-color-medium-shade: #5e6370;
+  --ion-color-medium-tint: #7a808d;
+
+  --ion-color-light: #1E2130;
+  --ion-color-light-rgb: 30, 33, 48;
+  --ion-color-light-contrast: #ffffff;
+  --ion-color-light-shade: #1a1d2a;
+  --ion-color-light-tint: #353748;
+
+  /* ── Cores de Fundo ───────────────────────────────────── */
+  --ion-background-color: #0D1117;
+  --ion-background-color-rgb: 13, 17, 23;
+
+  --ion-toolbar-background: #161B22;
+  --ion-tab-bar-background: #161B22;
+  --ion-tab-bar-border-color: rgba(255,255,255,0.06);
+  --ion-tab-bar-color: #6B7280;
+  --ion-tab-bar-color-selected: #10B981;
+
+  --ion-item-background: transparent;
+  --ion-card-background: #161B22;
+
+  /* ── Tipografia ───────────────────────────────────────── */
+  --ion-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ion-text-color: #F0F6FC;
+  --ion-text-color-rgb: 240, 246, 252;
+
+  /* ── Custom Design Tokens ─────────────────────────────── */
+  --cofre-surface: #161B22;
+  --cofre-surface-2: #1C2233;
+  --cofre-surface-3: #21262D;
+  --cofre-border: rgba(255, 255, 255, 0.07);
+  --cofre-border-hover: rgba(255, 255, 255, 0.15);
+
+  --cofre-green: #10B981;
+  --cofre-green-glow: rgba(16, 185, 129, 0.25);
+  --cofre-green-muted: rgba(16, 185, 129, 0.1);
+
+  --cofre-red: #EF4444;
+  --cofre-red-muted: rgba(239, 68, 68, 0.1);
+
+  --cofre-purple: #6366F1;
+  --cofre-purple-muted: rgba(99, 102, 241, 0.1);
+
+  --cofre-gold: #F59E0B;
+  --cofre-gold-muted: rgba(245, 158, 11, 0.1);
+
+  --cofre-radius: 16px;
+  --cofre-radius-sm: 10px;
+  --cofre-radius-lg: 24px;
+
+  --cofre-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --cofre-shadow-glow: 0 0 30px rgba(16, 185, 129, 0.15);
+}
+
+/* ── Correções globais ───────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
+ion-content {
+  --background: #0D1117;
+}
+
+ion-toolbar {
+  --background: #161B22;
+  --border-color: rgba(255,255,255,0.06);
+}
+
+ion-tab-bar {
+  --background: #161B22;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+ion-tab-button {
+  --color: #6B7280;
+  --color-selected: #10B981;
+}
+
+ion-card {
+  --background: #161B22;
+  margin: 0;
+  border-radius: var(--cofre-radius);
+  border: 1px solid var(--cofre-border);
+  box-shadow: var(--cofre-shadow);
+}
+
+ion-item {
+  --background: transparent;
+  --border-color: var(--cofre-border);
+  --color: var(--ion-text-color);
+  --padding-start: 0;
+  --inner-padding-end: 0;
+}
+
+ion-input {
+  --background: var(--cofre-surface-3);
+  --color: var(--ion-text-color);
+  --placeholder-color: #6B7280;
+  --padding-start: 16px !important;
+  --padding-end: 16px !important;
+  --padding-top: 12px !important;
+  --padding-bottom: 12px !important;
+  border-radius: var(--cofre-radius-sm);
+  border: 1px solid var(--cofre-border);
+  margin-top: 4px;
+}
+
+ion-textarea {
+  --background: var(--cofre-surface-3);
+  --color: var(--ion-text-color);
+  --placeholder-color: #6B7280;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  border-radius: var(--cofre-radius-sm);
+  border: 1px solid var(--cofre-border);
+  margin-top: 4px;
+}
+
+ion-label {
+  color: #9CA3AF !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+ion-select {
+  --background: var(--cofre-surface-3);
+  --color: var(--ion-text-color);
+  --placeholder-color: #6B7280;
+  border-radius: var(--cofre-radius-sm);
+  border: 1px solid var(--cofre-border);
+  padding: 12px 16px;
+  margin-top: 4px;
+}
+
+ion-fab-button {
+  --background: linear-gradient(135deg, #10B981, #059669);
+  --box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+}
+
+ion-button {
+  --border-radius: var(--cofre-radius-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+ion-title {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* ── Scroll customizado ──────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--cofre-border-hover); border-radius: 2px; }
+
+/* ── Fonte Google Inter ─────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');

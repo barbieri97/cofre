@@ -1,0 +1,71 @@
+# Dependências
+node_modules/
+/platforms
+/plugins
+.npm
+.yarn
+
+# Ambientes (Nunca fazer commit de variáveis de ambiente com credenciais)
+.env
+.env.local
+.env.*.local
+.env.test
+.env.production
+.env.development
+
+# Pastas de Build e Compilação (Vite / Vue / Ionic)
+/dist
+/dist-ssr
+/www
+/build
+.output/
+
+# Cache de Ferramentas / Testes
+.eslintcache
+.stylelintcache
+/coverage
+.nyc_output
+cypress/videos/
+cypress/screenshots/
+*.tsbuildinfo
+.vite/
+
+# Arquivos de Log
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Windows e macOS (Arquivos de Sistema)
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+$RECYCLE.BIN/
+Desktop.ini
+
+# Editors / IDEs
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+*.sublime-project
+*.sublime-workspace
+*.sw[mnpcod]
+*~
+.tmp
+*.tmp
+*.tmp.*
+UserInterfaceState.xcuserstate
+
+# Cache Ionic
+.ionic/
