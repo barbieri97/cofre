@@ -83,12 +83,24 @@
           >
             <ion-icon :icon="barChartOutline" /> Barras
           </button>
+          <button
+            id="btn-tipo-saldo"
+            :class="['tipo-btn', tipoGrafico === 'saldo' && 'ativo']"
+            @click="tipoGrafico = 'saldo'"
+          >
+            <ion-icon :icon="walletOutline" /> Saldo
+          </button>
         </div>
 
         <!-- Gráfico Principal -->
         <div class="secao">
           <p class="secao-titulo">
-            {{ tipoGrafico === 'linha' ? 'Evolução do Patrimônio' : tipoGrafico === 'linha-comparativo' ? 'Evolução Ganhos vs Gastos' : 'Ganhos vs Gastos (Barras)' }}
+            {{
+              tipoGrafico === 'linha' ? 'Evolução do Patrimônio'
+              : tipoGrafico === 'linha-comparativo' ? 'Evolução Ganhos vs Gastos'
+              : tipoGrafico === 'saldo' ? 'Saldo Mensal (quanto guardei)'
+              : 'Ganhos vs Gastos (Barras)'
+            }}
           </p>
           <div class="grafico-container">
             <GraficoCanvas :dados="pontosGrafico" :tipo="tipoGrafico" :height="240" />
@@ -178,7 +190,7 @@ import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
   IonButtons, IonButton, IonIcon, IonSelect, IonSelectOption
 } from '@ionic/vue';
-import { filterOutline, barChartOutline, trendingUpOutline } from 'ionicons/icons';
+import { filterOutline, barChartOutline, trendingUpOutline, walletOutline } from 'ionicons/icons';
 import { usePatrimonio } from '../composables/usePatrimonio';
 import GraficoCanvas from '../components/GraficoCanvas.vue';
 import { MESES_ABREV, formatCurrency, formatPercent } from '../types';
@@ -186,7 +198,7 @@ import { MESES_ABREV, formatCurrency, formatPercent } from '../types';
 const { filtro, pontosGrafico, estatisticas, setFiltro, resetarFiltro } = usePatrimonio();
 
 const mostrarFiltro = ref(false);
-const tipoGrafico = ref<'linha' | 'barra' | 'linha-comparativo'>('linha');
+const tipoGrafico = ref<'linha' | 'barra' | 'linha-comparativo' | 'saldo'>('linha');
 const filtroLocal = ref({ ...filtro.value });
 
 watch(filtro, n => { filtroLocal.value = { ...n }; }, { deep: true });
