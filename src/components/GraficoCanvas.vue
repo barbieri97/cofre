@@ -190,7 +190,7 @@ const chartOptions = computed(() => {
       },
       y: {
         grid: { color: 'rgba(255,255,255,0.06)', drawBorder: false },
-        beginAtZero: false,
+        beginAtZero: props.tipo === 'barra',
         ticks: {
           color: '#9CA3AF',
           font: { family: 'Inter', size: 10 },
