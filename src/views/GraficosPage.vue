@@ -81,14 +81,7 @@
             :class="['tipo-btn', tipoGrafico === 'barra' && 'ativo']"
             @click="tipoGrafico = 'barra'"
           >
-            <ion-icon :icon="barChartOutline" /> Barras
-          </button>
-          <button
-            id="btn-tipo-saldo"
-            :class="['tipo-btn', tipoGrafico === 'saldo' && 'ativo']"
-            @click="tipoGrafico = 'saldo'"
-          >
-            <ion-icon :icon="walletOutline" /> Saldo
+            <ion-icon :icon="barChartOutline" /> Ganhos e Despesas
           </button>
         </div>
 
@@ -98,8 +91,7 @@
             {{
               tipoGrafico === 'linha' ? 'Evolução do Patrimônio'
               : tipoGrafico === 'linha-comparativo' ? 'Evolução Ganhos vs Gastos'
-              : tipoGrafico === 'saldo' ? 'Saldo Mensal (quanto guardei)'
-              : 'Ganhos vs Gastos (Barras)'
+              : 'Ganhos e Despesas por Mês'
             }}
           </p>
           <div class="grafico-container">
@@ -190,7 +182,7 @@ import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
   IonButtons, IonButton, IonIcon, IonSelect, IonSelectOption
 } from '@ionic/vue';
-import { filterOutline, barChartOutline, trendingUpOutline, walletOutline } from 'ionicons/icons';
+import { filterOutline, barChartOutline, trendingUpOutline } from 'ionicons/icons';
 import { usePatrimonio } from '../composables/usePatrimonio';
 import GraficoCanvas from '../components/GraficoCanvas.vue';
 import { MESES_ABREV, formatCurrency, formatPercent } from '../types';
@@ -198,7 +190,7 @@ import { MESES_ABREV, formatCurrency, formatPercent } from '../types';
 const { filtro, pontosGrafico, estatisticas, setFiltro, resetarFiltro } = usePatrimonio();
 
 const mostrarFiltro = ref(false);
-const tipoGrafico = ref<'linha' | 'barra' | 'linha-comparativo' | 'saldo'>('linha');
+const tipoGrafico = ref<'linha' | 'barra' | 'linha-comparativo'>('linha');
 const filtroLocal = ref({ ...filtro.value });
 
 watch(filtro, n => { filtroLocal.value = { ...n }; }, { deep: true });

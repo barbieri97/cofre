@@ -1,7 +1,7 @@
 <template>
   <div class="grafico-wrap" :style="{ height: height + 'px' }">
     <Line v-if="tipo === 'linha' || tipo === 'linha-comparativo'" :data="chartData" :options="chartOptions" class="grafico-canvas" />
-    <Bar v-else-if="tipo === 'barra' || tipo === 'saldo'" :data="chartData" :options="chartOptions" class="grafico-canvas" />
+    <Bar v-else-if="tipo === 'barra'" :data="chartData" :options="chartOptions" class="grafico-canvas" />
     <p v-if="!dados.length" class="grafico-vazio">Sem dados para exibir</p>
   </div>
 </template>
@@ -28,7 +28,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend,
 
 const props = withDefaults(defineProps<{
   dados: PontoGrafico[];
-  tipo?: 'linha' | 'barra' | 'linha-comparativo' | 'saldo';
+  tipo?: 'linha' | 'barra' | 'linha-comparativo';
   height?: number;
 }>(), {
   tipo: 'linha',
@@ -88,43 +88,51 @@ const chartData = computed(() => {
         }
       ]
     };
-  } else if (props.tipo === 'saldo') {
-    const saldos = props.dados.map(d => d.saldo);
-    const cores = saldos.map(v => v >= 0 ? 'rgba(16,185,129,0.85)' : 'rgba(239,68,68,0.85)');
-    const coresBorda = saldos.map(v => v >= 0 ? '#10B981' : '#EF4444');
-    return {
-      labels,
-      datasets: [{
-        label: 'Saldo do Mês',
-        data: saldos,
-        backgroundColor: cores,
-        borderColor: coresBorda,
-        borderWidth: 1.5,
-        borderRadius: 5,
-        barPercentage: 0.65,
-        categoryPercentage: 0.75,
-      }]
-    };
   } else {
-    // barra
+    // barra mista: ganhos (positivo), gastos (negativo), saldo como linha
+    const saldos = props.dados.map(d => d.saldo);
     return {
       labels,
       datasets: [
         {
+          type: 'bar' as const,
           label: 'Ganhos',
           data: props.dados.map(d => d.ganhos),
-          backgroundColor: '#10B981',
+          backgroundColor: 'rgba(16,185,129,0.75)',
+          borderColor: '#10B981',
+          borderWidth: 1,
           borderRadius: 4,
-          barPercentage: 0.7,
-          categoryPercentage: 0.8
+          barPercentage: 0.6,
+          categoryPercentage: 0.8,
+          order: 2,
         },
         {
-          label: 'Gastos',
-          data: props.dados.map(d => d.gastos),
-          backgroundColor: '#EF4444',
+          type: 'bar' as const,
+          label: 'Despesas',
+          data: props.dados.map(d => -d.gastos),
+          backgroundColor: 'rgba(239,68,68,0.75)',
+          borderColor: '#EF4444',
+          borderWidth: 1,
           borderRadius: 4,
-          barPercentage: 0.7,
-          categoryPercentage: 0.8
+          barPercentage: 0.6,
+          categoryPercentage: 0.8,
+          order: 2,
+        },
+        {
+          type: 'line' as const,
+          label: 'Saldo',
+          data: saldos,
+          borderColor: '#6366F1',
+          backgroundColor: 'rgba(99,102,241,0.12)',
+          borderWidth: 2.5,
+          tension: 0.4,
+          fill: false,
+          pointBackgroundColor: '#6366F1',
+          pointBorderColor: '#6366F1',
+          pointBorderWidth: 2,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          order: 1,
         }
       ]
     };
@@ -142,7 +150,7 @@ const chartOptions = computed(() => {
     },
     plugins: {
       legend: {
-        display: props.tipo !== 'linha' && props.tipo !== 'saldo',
+        display: props.tipo !== 'linha',
         position: 'bottom' as const,
         labels: {
           color: '#9CA3AF',
@@ -182,7 +190,7 @@ const chartOptions = computed(() => {
       },
       y: {
         grid: { color: 'rgba(255,255,255,0.06)', drawBorder: false },
-        beginAtZero: props.tipo !== 'saldo',
+        beginAtZero: false,
         ticks: {
           color: '#9CA3AF',
           font: { family: 'Inter', size: 10 },
