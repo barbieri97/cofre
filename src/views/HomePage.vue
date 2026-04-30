@@ -138,6 +138,26 @@
           </div>
         </div>
 
+        <!-- Cards de Média / Desvio Padrão -->
+        <div class="media-grid">
+          <div class="media-card verde">
+            <div class="media-top">
+              <ion-icon :icon="arrowUpOutline" class="media-icon" />
+              <span class="media-label">Ganho Médio</span>
+            </div>
+            <p class="media-valor">{{ formatCurrency(mediasDesvio.mediaGanhos) }}</p>
+            <p class="media-dp">(± {{ formatCurrency(mediasDesvio.dpGanhos) }})</p>
+          </div>
+          <div class="media-card vermelho">
+            <div class="media-top">
+              <ion-icon :icon="arrowDownOutline" class="media-icon" />
+              <span class="media-label">Gasto Médio</span>
+            </div>
+            <p class="media-valor">{{ formatCurrency(mediasDesvio.mediaGastos) }}</p>
+            <p class="media-dp">(± {{ formatCurrency(mediasDesvio.dpGastos) }})</p>
+          </div>
+        </div>
+
         <!-- Mini Gráfico -->
         <div class="secao">
           <div class="secao-header">
@@ -199,7 +219,7 @@ import { usePatrimonio } from '../composables/usePatrimonio';
 import GraficoCanvas from '../components/GraficoCanvas.vue';
 import { MESES_ABREV, formatCurrency, formatPercent, labelMes } from '../types';
 
-const { config, filtro, registrosFiltrados, estatisticas, pontosGrafico, setFiltro, resetarFiltro } = usePatrimonio();
+const { config, filtro, registrosFiltrados, estatisticas, mediasDesvio, pontosGrafico, setFiltro, resetarFiltro } = usePatrimonio();
 
 const mostrarFiltro = ref(false);
 const filtroLocal = ref({ ...filtro.value });
@@ -386,4 +406,50 @@ function limparFiltro() {
 
 .verde { color: #10B981; }
 .vermelho { color: #EF4444; }
+
+/* Cards de Média / Desvio Padrão */
+.media-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.media-card {
+  background: #161B22;
+  border-radius: 14px;
+  padding: 14px 14px 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.media-card.verde { border-left: 3px solid #10B981; }
+.media-card.vermelho { border-left: 3px solid #EF4444; }
+.media-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.media-icon { font-size: 1rem; flex-shrink: 0; }
+.media-card.verde .media-icon { color: #10B981; }
+.media-card.vermelho .media-icon { color: #EF4444; }
+.media-label {
+  font-size: 0.68rem;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.media-valor {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #F0F6FC;
+  margin: 0 0 2px;
+}
+.media-card.verde .media-valor { color: #10B981; }
+.media-card.vermelho .media-valor { color: #EF4444; }
+.media-dp {
+  font-size: 0.72rem;
+  color: #6B7280;
+  margin: 0;
+  font-style: italic;
+}
 </style>

@@ -130,6 +130,20 @@
               <p class="stat-valor roxo">{{ formatPercent(estatisticas.taxaPoupanca) }}</p>
             </div>
           </div>
+
+          <!-- Cards de Média / Desvio Padrão -->
+          <div class="media-grid">
+            <div class="media-card verde">
+              <p class="media-label">↗ Ganho Médio</p>
+              <p class="media-valor">{{ formatCurrency(mediasDesvio.mediaGanhos) }}</p>
+              <p class="media-dp">(± {{ formatCurrency(mediasDesvio.dpGanhos) }})</p>
+            </div>
+            <div class="media-card vermelho">
+              <p class="media-label">↘ Gasto Médio</p>
+              <p class="media-valor">{{ formatCurrency(mediasDesvio.mediaGastos) }}</p>
+              <p class="media-dp">(± {{ formatCurrency(mediasDesvio.dpGastos) }})</p>
+            </div>
+          </div>
         </div>
 
         <!-- Tabela detalhada -->
@@ -187,7 +201,7 @@ import { usePatrimonio } from '../composables/usePatrimonio';
 import GraficoCanvas from '../components/GraficoCanvas.vue';
 import { MESES_ABREV, formatCurrency, formatPercent } from '../types';
 
-const { filtro, pontosGrafico, estatisticas, setFiltro, resetarFiltro } = usePatrimonio();
+const { filtro, pontosGrafico, estatisticas, mediasDesvio, setFiltro, resetarFiltro } = usePatrimonio();
 
 const mostrarFiltro = ref(false);
 const tipoGrafico = ref<'linha' | 'barra' | 'linha-comparativo'>('linha');
@@ -300,6 +314,42 @@ function limparFiltro() { resetarFiltro(); filtroLocal.value = { ...filtro.value
 .vermelho { color: #EF4444; }
 .roxo { color: #6366F1; }
 .branco { color: #F0F6FC; }
+
+/* Cards de Média / Desvio Padrão */
+.media-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+.media-card {
+  background: #161B22;
+  border-radius: 12px;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.media-card.verde { border-left: 3px solid #10B981; background: rgba(16,185,129,0.05); }
+.media-card.vermelho { border-left: 3px solid #EF4444; background: rgba(239,68,68,0.05); }
+.media-label {
+  font-size: 0.65rem;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 6px;
+}
+.media-valor {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 2px;
+}
+.media-card.verde .media-valor { color: #10B981; }
+.media-card.vermelho .media-valor { color: #EF4444; }
+.media-dp {
+  font-size: 0.72rem;
+  color: #6B7280;
+  margin: 0;
+  font-style: italic;
+}
 
 .slide-filtro-enter-active, .slide-filtro-leave-active { transition: all 0.25s ease; }
 .slide-filtro-enter-from, .slide-filtro-leave-to { opacity: 0; transform: translateY(-10px); }

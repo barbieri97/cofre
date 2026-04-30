@@ -69,6 +69,21 @@ export function usePatrimonio() {
     };
   });
 
+  // ── Médias e desvio padrão ────────────────────────────────
+  const mediasDesvio = computed(() => {
+    const regs = registrosFiltrados.value;
+    const n = regs.length;
+    if (n === 0) return { mediaGanhos: 0, dpGanhos: 0, mediaGastos: 0, dpGastos: 0 };
+
+    const mediaGanhos = regs.reduce((s, r) => s + r.ganhos, 0) / n;
+    const mediaGastos = regs.reduce((s, r) => s + r.gastos, 0) / n;
+
+    const dpGanhos = Math.sqrt(regs.reduce((s, r) => s + Math.pow(r.ganhos - mediaGanhos, 2), 0) / n);
+    const dpGastos = Math.sqrt(regs.reduce((s, r) => s + Math.pow(r.gastos - mediaGastos, 2), 0) / n);
+
+    return { mediaGanhos, dpGanhos, mediaGastos, dpGastos };
+  });
+
   // ── Pontos para gráficos ───────────────────────────────────
   const pontosGrafico = computed<PontoGrafico[]>(() => {
     let acumulado = config.value.patrimonioInicial;
@@ -164,6 +179,7 @@ export function usePatrimonio() {
     filtro,
     // Computed
     estatisticas,
+    mediasDesvio,
     pontosGrafico,
     patrimonioAtualGeral,
     // CRUD
