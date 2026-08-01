@@ -31,6 +31,16 @@ const routes: Array<RouteRecordRaw> = [
         name: 'Configuracoes',
         component: () => import('../views/ConfigPage.vue'),
       },
+      {
+        path: 'estatisticas',
+        name: 'Estatisticas',
+        component: () => import('../views/EstatisticasPage.vue'),
+      },
+      {
+        path: 'metas',
+        name: 'Metas',
+        component: () => import('../views/MetasPage.vue'),
+      },
     ]
   }
 ];

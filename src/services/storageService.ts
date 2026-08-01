@@ -1,7 +1,7 @@
 // ============================================================
 // Serviço de Persistência — LocalStorage
-// Essa camada isola toda a lógica de armazenamento.
-// Para migrar para SQLite/IndexedDB, basta reimplementar aqui.
+// Isola toda lógica de armazenamento. Para migrar para
+// SQLite/IndexedDB basta reimplementar aqui.
 // ============================================================
 
 import type { RegistroMensal, ConfigApp } from '../types';
@@ -16,6 +16,7 @@ const CONFIG_PADRAO: ConfigApp = {
   moeda: 'BRL',
   simboloMoeda: 'R$',
   primeiroUso: true,
+  metas: [],
 };
 
 // ── Registros ────────────────────────────────────────────────
@@ -41,11 +42,34 @@ export function saveRegistros(registros: RegistroMensal[]): void {
 
 // ── Configurações ────────────────────────────────────────────
 
+function generateMetaId() {
+  return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+}
+
 export function getConfig(): ConfigApp {
   try {
     const raw = localStorage.getItem(KEYS.CONFIG);
     if (!raw) return { ...CONFIG_PADRAO };
-    return { ...CONFIG_PADRAO, ...JSON.parse(raw) } as ConfigApp;
+    const parsed = JSON.parse(raw);
+    
+    // Migração de meta única para array de metas
+    if (parsed.metaPatrimonio !== undefined && !parsed.metas) {
+      parsed.metas = [{
+        id: generateMetaId(),
+        valor: parsed.metaPatrimonio,
+        dataInicio: parsed.metaDataInicio || new Date().toISOString(),
+        dataConclusao: parsed.metaDataConclusao
+      }];
+      delete parsed.metaPatrimonio;
+      delete parsed.metaDataInicio;
+      delete parsed.metaDataConclusao;
+      localStorage.setItem(KEYS.CONFIG, JSON.stringify(parsed));
+    }
+    
+    // Para garantir que o array metas sempre exista
+    if (!parsed.metas) parsed.metas = [];
+
+    return { ...CONFIG_PADRAO, ...parsed } as ConfigApp;
   } catch {
     console.error('[StorageService] Erro ao ler config');
     return { ...CONFIG_PADRAO };
@@ -57,6 +81,39 @@ export function saveConfig(config: ConfigApp): void {
     localStorage.setItem(KEYS.CONFIG, JSON.stringify(config));
   } catch (e) {
     console.error('[StorageService] Erro ao salvar config', e);
+  }
+}
+
+// ── Backup / Restore ─────────────────────────────────────────
+
+export interface BackupData {
+  versao: string;
+  exportadoEm: string;
+  config: ConfigApp;
+  registros: RegistroMensal[];
+}
+
+export function exportarBackup(): string {
+  const backup: BackupData = {
+    versao: '2.0',
+    exportadoEm: new Date().toISOString(),
+    config: getConfig(),
+    registros: getRegistros(),
+  };
+  return JSON.stringify(backup, null, 2);
+}
+
+export function importarBackup(json: string): { ok: boolean; mensagem: string } {
+  try {
+    const backup = JSON.parse(json) as BackupData;
+    if (!backup.registros || !Array.isArray(backup.registros)) {
+      return { ok: false, mensagem: 'Arquivo inválido: registros não encontrados.' };
+    }
+    if (backup.config) saveConfig({ ...CONFIG_PADRAO, ...backup.config });
+    saveRegistros(backup.registros);
+    return { ok: true, mensagem: `${backup.registros.length} registros importados com sucesso!` };
+  } catch {
+    return { ok: false, mensagem: 'Erro ao ler o arquivo. Verifique se é um backup válido do Cofre.' };
   }
 }
 

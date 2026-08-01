@@ -21,7 +21,7 @@
     <ion-content class="ion-padding">
       <!-- Período -->
       <div class="campo-grupo">
-        <p class="campo-titulo">Período</p>
+        <p class="campo-titulo">📅 Período</p>
         <div class="row-2col">
           <div class="campo-wrap">
             <ion-label>Mês</ion-label>
@@ -52,14 +52,14 @@
             </ion-select>
           </div>
         </div>
-        <p v-if="erroMesDuplicado" class="erro-msg">Este mês já foi registrado.</p>
+        <p v-if="erroMesDuplicado" class="erro-msg">⚠️ Este mês já foi registrado.</p>
       </div>
 
-      <!-- Ganhos -->
+      <!-- Receita -->
       <div class="campo-grupo">
-        <p class="campo-titulo">Entradas (R$)</p>
+        <p class="campo-titulo">💰 Receita Total (R$)</p>
+        <p class="campo-desc">Tudo que entrou: salário, freelances, renda extra, rendimentos...</p>
         <div class="campo-wrap">
-          <ion-label>Total de ganhos no mês</ion-label>
           <ion-input
             id="input-ganhos"
             :value="form.ganhosStr"
@@ -73,11 +73,11 @@
         </div>
       </div>
 
-      <!-- Gastos -->
+      <!-- Despesa -->
       <div class="campo-grupo">
-        <p class="campo-titulo">Saídas (R$)</p>
+        <p class="campo-titulo">💸 Despesa Total (R$)</p>
+        <p class="campo-desc">Tudo que saiu: contas, compras, despesas fixas e variáveis...</p>
         <div class="campo-wrap">
-          <ion-label>Total de gastos no mês</ion-label>
           <ion-input
             id="input-gastos"
             :value="form.gastosStr"
@@ -91,21 +91,30 @@
         </div>
       </div>
 
-      <!-- Preview do saldo -->
-      <div class="saldo-preview" :class="saldoPreview >= 0 ? 'positivo' : 'negativo'">
-        <span class="saldo-label">Saldo do mês</span>
-        <span class="saldo-valor">{{ formatCurrency(saldoPreview) }}</span>
+      <!-- Preview calculado -->
+      <div class="preview-card" v-if="form.ganhosStr || form.gastosStr">
+        <div class="preview-row">
+          <span class="prev-label">Saldo do mês</span>
+          <span class="prev-valor" :class="saldoPreview >= 0 ? 'positivo' : 'negativo'">
+            {{ saldoPreview >= 0 ? '+' : '' }}{{ formatCurrency(saldoPreview) }}
+          </span>
+        </div>
+        <div class="preview-row" v-if="taxaPoupancaPreview > 0">
+          <span class="prev-label">Taxa de poupança</span>
+          <span class="prev-valor" :class="taxaPoupancaPreview >= 20 ? 'positivo' : taxaPoupancaPreview >= 0 ? 'neutro' : 'negativo'">
+            {{ formatPercent(taxaPoupancaPreview) }}
+          </span>
+        </div>
       </div>
 
       <!-- Descrição -->
       <div class="campo-grupo">
-        <p class="campo-titulo">Observações (opcional)</p>
+        <p class="campo-titulo">📝 Observações (opcional)</p>
         <div class="campo-wrap">
-          <ion-label>Anotações sobre este mês</ion-label>
           <ion-textarea
             id="textarea-descricao"
             v-model="form.descricao"
-            placeholder="Ex: férias, bônus, despesas extras..."
+            placeholder="Ex: férias, bônus, mês atípico..."
             :rows="3"
           />
         </div>
@@ -122,7 +131,7 @@ import {
   IonSelect, IonSelectOption
 } from '@ionic/vue';
 import type { RegistroMensal } from '../types';
-import { MESES_PT, formatCurrency } from '../types';
+import { MESES_PT, formatCurrency, formatPercent } from '../types';
 
 // ── Props / Emits ────────────────────────────────────────────
 const props = defineProps<{
@@ -204,6 +213,12 @@ const saldoPreview = computed(() => {
   return g - s;
 });
 
+const taxaPoupancaPreview = computed(() => {
+  const g = parseFloat(form.value.ganhosStr) || 0;
+  if (g <= 0) return 0;
+  return (saldoPreview.value / g) * 100;
+});
+
 // ── Ações ────────────────────────────────────────────────────
 function salvar() {
   if (!formularioValido.value) return;
@@ -240,12 +255,19 @@ ion-content {
 }
 
 .campo-titulo {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #10B981;
+  margin: 0 0 6px;
+}
+
+.campo-desc {
+  font-size: 0.78rem;
+  color: #6B7280;
   margin: 0 0 12px;
+  line-height: 1.5;
 }
 
 .campo-wrap {
@@ -260,38 +282,37 @@ ion-content {
   gap: 12px;
 }
 
-.saldo-preview {
+/* Preview calculado */
+.preview-card {
+  background: #161B22;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preview-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-radius: 12px;
-  margin-bottom: 24px;
 }
 
-.saldo-preview.positivo {
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.saldo-preview.negativo {
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-.saldo-label {
-  font-size: 0.85rem;
+.prev-label {
+  font-size: 0.82rem;
   color: #9CA3AF;
-  font-weight: 500;
 }
 
-.saldo-valor {
-  font-size: 1.2rem;
+.prev-valor {
+  font-size: 1rem;
   font-weight: 700;
 }
 
-.saldo-preview.positivo .saldo-valor { color: #10B981; }
-.saldo-preview.negativo .saldo-valor { color: #EF4444; }
+.prev-valor.positivo { color: #10B981; }
+.prev-valor.negativo { color: #EF4444; }
+.prev-valor.neutro { color: #F59E0B; }
 
 .erro-msg {
   color: #EF4444;

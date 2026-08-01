@@ -18,9 +18,14 @@
           <ion-label>Gráficos</ion-label>
         </ion-tab-button>
 
-        <ion-tab-button tab="configuracoes" href="/tabs/configuracoes">
-          <ion-icon :icon="settingsOutline" />
-          <ion-label>Config</ion-label>
+        <ion-tab-button tab="estatisticas" href="/tabs/estatisticas">
+          <ion-icon :icon="statsChartOutline" />
+          <ion-label>Stats</ion-label>
+        </ion-tab-button>
+
+        <ion-tab-button tab="metas" href="/tabs/metas">
+          <ion-icon :icon="flagOutline" />
+          <ion-label>Metas</ion-label>
         </ion-tab-button>
       </ion-tab-bar>
     </ion-tabs>
@@ -32,18 +37,22 @@ import {
   IonPage, IonTabs, IonTabBar, IonTabButton,
   IonIcon, IonLabel, IonRouterOutlet
 } from '@ionic/vue';
-import { homeOutline, listOutline, barChartOutline, settingsOutline } from 'ionicons/icons';
+import { homeOutline, listOutline, barChartOutline, statsChartOutline, flagOutline } from 'ionicons/icons';
 </script>
 
 <style scoped>
+ion-tab-bar {
+  --background: #0D1117;
+  --border-color: rgba(255,255,255,0.07);
+}
 ion-tab-button {
-  --color: #6B7280;
-  --color-selected: #10B981;
-  font-size: 0.65rem;
-  font-weight: 500;
+  --color: #4B5563;
+  --color-selected: #8B5CF6;
+  font-size: 0.62rem;
+  font-weight: 600;
 }
 ion-tab-button ion-icon {
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   margin-bottom: 2px;
 }
 </style>

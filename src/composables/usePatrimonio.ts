@@ -1,20 +1,20 @@
 // ============================================================
-// Composable Central — usePatrimonio
+// Composable Central — usePatrimonio v2.0
 // Toda a lógica de negócio reativa do app.
 // ============================================================
 
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import type {
   RegistroMensal, ConfigApp, EstatisticasPeriodo,
+  EstatisticasGerais, ProjecaoMeta, MetaPatrimonio,
   FiltroPeriodo, PontoGrafico
 } from '../types';
-import { generateId, labelMes } from '../types';
+import { generateId, labelMes, adicionarMeses } from '../types';
 import * as storage from '../services/storageService';
 
 // ── Estado Global (singleton reativo) ───────────────────────
 const registros = ref<RegistroMensal[]>([]);
 const config = ref<ConfigApp>(storage.getConfig());
-const filtro = ref<FiltroPeriodo>(gerarFiltroDefault());
 
 let inicializado = false;
 
@@ -27,7 +27,7 @@ export function usePatrimonio() {
     inicializado = true;
   }
 
-  // ── Dados ordenados ────────────────────────────────────────
+  // ── Dados ordenados cronologicamente ──────────────────────
   const registrosOrdenados = computed(() =>
     [...registros.value].sort((a, b) => {
       if (a.ano !== b.ano) return a.ano - b.ano;
@@ -35,41 +35,268 @@ export function usePatrimonio() {
     })
   );
 
+  // ── Patrimônio acumulado de TODOS os registros ─────────────
+  // Calcula o patrimônio para cada mês usando o patrimonioInicial como base
+  const patrimonioAcumulado = computed(() => {
+    let acumulado = config.value.patrimonioInicial;
+    return registrosOrdenados.value.map(r => {
+      acumulado += r.ganhos - r.gastos;
+      return { mes: r.mes, ano: r.ano, patrimonio: acumulado };
+    });
+  });
+
+  // ── Patrimônio atual geral (sem filtro) ───────────────────
+  const patrimonioAtualGeral = computed(() => {
+    const ultimo = patrimonioAcumulado.value.at(-1);
+    return ultimo?.patrimonio ?? config.value.patrimonioInicial;
+  });
+
+  // ── Patrimônio em um mês específico ─────────────────────
+  // BUG FIX: calcula o patrimônio acumulado até (exclusive) um determinado ponto
+  function patrimonioAntesDe(mes: number, ano: number): number {
+    const chave = ano * 100 + mes;
+    let acumulado = config.value.patrimonioInicial;
+    for (const r of registrosOrdenados.value) {
+      if (r.ano * 100 + r.mes >= chave) break;
+      acumulado += r.ganhos - r.gastos;
+    }
+    return acumulado;
+  }
+
+  // ── Registros sem filtro de período (todos) ───────────────
+  // Usado para seleção de filtro disponível
+  const filtroAtivo = ref<FiltroPeriodo>(gerarFiltroDefault());
+
   // ── Registros filtrados ────────────────────────────────────
   const registrosFiltrados = computed(() =>
     registrosOrdenados.value.filter(r => {
       const chaveR = r.ano * 100 + r.mes;
-      const chaveInicio = filtro.value.anoInicio * 100 + filtro.value.mesInicio;
-      const chaveFim = filtro.value.anoFim * 100 + filtro.value.mesFim;
+      const chaveInicio = filtroAtivo.value.anoInicio * 100 + filtroAtivo.value.mesInicio;
+      const chaveFim = filtroAtivo.value.anoFim * 100 + filtroAtivo.value.mesFim;
       return chaveR >= chaveInicio && chaveR <= chaveFim;
     })
   );
 
+  // ── Pontos para gráficos (período filtrado) ───────────────
+  // BUG FIX: usa o patrimônio real no início do período filtrado como base
+  const pontosGrafico = computed<PontoGrafico[]>(() => {
+    const regs = registrosFiltrados.value;
+    if (!regs.length) return [];
+
+    // Patrimônio logo antes do início do filtro
+    const patrimonioBase = patrimonioAntesDe(
+      filtroAtivo.value.mesInicio,
+      filtroAtivo.value.anoInicio
+    );
+
+    let acumulado = patrimonioBase;
+    return regs.map((r, i) => {
+      const saldo = r.ganhos - r.gastos;
+      const patrimonioAnterior = acumulado;
+      acumulado += saldo;
+      const crescimento = acumulado - patrimonioAnterior;
+      const taxaPoupanca = r.ganhos > 0 ? (saldo / r.ganhos) * 100 : 0;
+      return {
+        label: labelMes(r.mes, r.ano),
+        patrimonio: acumulado,
+        ganhos: r.ganhos,
+        gastos: r.gastos,
+        saldo,
+        taxaPoupanca,
+        crescimento,
+      };
+    });
+  });
+
   // ── Estatísticas do período filtrado ──────────────────────
   const estatisticas = computed<EstatisticasPeriodo>(() => {
     const regs = registrosFiltrados.value;
+    const pontos = pontosGrafico.value;
+
     const totalGanhos = regs.reduce((s, r) => s + r.ganhos, 0);
     const totalGastos = regs.reduce((s, r) => s + r.gastos, 0);
     const saldoLiquido = totalGanhos - totalGastos;
     const taxaPoupanca = totalGanhos > 0 ? (saldoLiquido / totalGanhos) * 100 : 0;
-    const patrimonioAtual = config.value.patrimonioInicial + saldoLiquido;
-    const variacaoTotal = patrimonioAtual - config.value.patrimonioInicial;
-    const variacaoPercentual = config.value.patrimonioInicial > 0
-      ? (variacaoTotal / config.value.patrimonioInicial) * 100
+
+    const patrimonioBase = patrimonioAntesDe(
+      filtroAtivo.value.mesInicio,
+      filtroAtivo.value.anoInicio
+    );
+    const patrimonioAtual = pontos.at(-1)?.patrimonio ?? patrimonioBase;
+    const variacaoTotal = patrimonioAtual - patrimonioBase;
+    const variacaoPercentual = patrimonioBase !== 0
+      ? (variacaoTotal / Math.abs(patrimonioBase)) * 100
       : 0;
+
+    // Dados do mês mais recente no filtro
+    const ultimoPonto = pontos.at(-1);
+    const penultimoPonto = pontos.at(-2);
+    const ganhosUltimoMes = ultimoPonto?.ganhos ?? 0;
+    const gastosUltimoMes = ultimoPonto?.gastos ?? 0;
+    const saldoUltimoMes = ultimoPonto?.saldo ?? 0;
+    const taxaPoupancaUltimoMes = ultimoPonto?.taxaPoupanca ?? 0;
+    const crescimentoUltimoMes = ultimoPonto?.crescimento ?? 0;
+    const patrimonioAnteriorUltimo = penultimoPonto?.patrimonio ?? patrimonioBase;
+    const crescimentoPercUltimoMes = patrimonioAnteriorUltimo !== 0
+      ? (crescimentoUltimoMes / Math.abs(patrimonioAnteriorUltimo)) * 100
+      : 0;
+
     return {
       totalGanhos,
       totalGastos,
       saldoLiquido,
       taxaPoupanca,
       patrimonioAtual,
-      patrimonioInicial: config.value.patrimonioInicial,
+      patrimonioBase,
       variacaoTotal,
       variacaoPercentual,
+      ganhosUltimoMes,
+      gastosUltimoMes,
+      saldoUltimoMes,
+      taxaPoupancaUltimoMes,
+      crescimentoUltimoMes,
+      crescimentoPercUltimoMes,
     };
   });
 
-  // ── Médias e desvio padrão ────────────────────────────────
+  // ── Estatísticas gerais (sem filtro, baseadas em todo histórico) ──
+  const estatisticasGerais = computed<EstatisticasGerais>(() => {
+    const todos = registrosOrdenados.value;
+    if (!todos.length) {
+      return {
+        mediaGanhos12m: 0, mediaGastos12m: 0, mediaSaldo12m: 0,
+        mediaTaxaPoupanca12m: 0, crescimentoMedioMensal: 0,
+        maiorGanho: null, maiorGasto: null,
+        maiorCrescimento: null, melhorTaxaPoupanca: null,
+      };
+    }
+
+    // Últimos 12 meses
+    const ultimos12 = todos.slice(-12);
+    const n12 = ultimos12.length;
+
+    const mediaGanhos12m = ultimos12.reduce((s, r) => s + r.ganhos, 0) / n12;
+    const mediaGastos12m = ultimos12.reduce((s, r) => s + r.gastos, 0) / n12;
+    const mediaSaldo12m = (mediaGanhos12m - mediaGastos12m);
+    const mediaTaxaPoupanca12m = mediaGanhos12m > 0
+      ? (mediaSaldo12m / mediaGanhos12m) * 100 : 0;
+
+    // Pontos com patrimônio para calcular crescimento
+    let acumulado = config.value.patrimonioInicial;
+    const pontosCompletos = todos.map(r => {
+      const anterior = acumulado;
+      acumulado += r.ganhos - r.gastos;
+      const saldo = r.ganhos - r.gastos;
+      return {
+        r,
+        patrimonio: acumulado,
+        saldo,
+        crescimento: acumulado - anterior,
+        taxaPoupanca: r.ganhos > 0 ? (saldo / r.ganhos) * 100 : 0,
+      };
+    });
+
+    // Crescimento médio mensal (últimos 12)
+    const ultimos12Pontos = pontosCompletos.slice(-12);
+    const crescimentoMedioMensal = ultimos12Pontos.reduce((s, p) => s + p.crescimento, 0) / ultimos12Pontos.length;
+
+    // Records históricos
+    const maiorGanhoP = pontosCompletos.reduce((max, p) => p.r.ganhos > max.r.ganhos ? p : max, pontosCompletos[0]);
+    const maiorGastoP = pontosCompletos.reduce((max, p) => p.r.gastos > max.r.gastos ? p : max, pontosCompletos[0]);
+    const maiorCrescP = pontosCompletos.reduce((max, p) => p.crescimento > max.crescimento ? p : max, pontosCompletos[0]);
+    const melhorPoupP = pontosCompletos.reduce((max, p) => p.taxaPoupanca > max.taxaPoupanca ? p : max, pontosCompletos[0]);
+
+    return {
+      mediaGanhos12m,
+      mediaGastos12m,
+      mediaSaldo12m,
+      mediaTaxaPoupanca12m,
+      crescimentoMedioMensal,
+      maiorGanho: { valor: maiorGanhoP.r.ganhos, mes: maiorGanhoP.r.mes, ano: maiorGanhoP.r.ano },
+      maiorGasto: { valor: maiorGastoP.r.gastos, mes: maiorGastoP.r.mes, ano: maiorGastoP.r.ano },
+      maiorCrescimento: { valor: maiorCrescP.crescimento, mes: maiorCrescP.r.mes, ano: maiorCrescP.r.ano },
+      melhorTaxaPoupanca: { valor: melhorPoupP.taxaPoupanca, mes: melhorPoupP.r.mes, ano: melhorPoupP.r.ano },
+    };
+  });
+
+  // ── Metas (Ativa e Histórico) ─────────────────────────────
+  const metaAtiva = computed<MetaPatrimonio | null>(() => {
+    return config.value.metas.find(m => !m.dataConclusao) || null;
+  });
+
+  const metasConcluidas = computed<MetaPatrimonio[]>(() => {
+    return [...config.value.metas]
+      .filter(m => m.dataConclusao)
+      .sort((a, b) => new Date(b.dataConclusao!).getTime() - new Date(a.dataConclusao!).getTime());
+  });
+
+  function adicionarMeta(valor: number) {
+    if (valor <= 0) return;
+    // Se já houver meta ativa, removemos ela para iniciar uma nova (mantendo apenas o histórico)
+    const historico = config.value.metas.filter(m => m.dataConclusao);
+    historico.push({
+      id: generateId(),
+      valor,
+      dataInicio: new Date().toISOString(),
+    });
+    saveConfig({ metas: historico });
+  }
+
+  function removerMetaAtiva() {
+    const historico = config.value.metas.filter(m => m.dataConclusao);
+    saveConfig({ metas: historico });
+  }
+
+  // ── Projeção de meta ──────────────────────────────────────
+  const projecaoMeta = computed<ProjecaoMeta | null>(() => {
+    const metaObj = metaAtiva.value;
+    if (!metaObj) return null;
+    const meta = metaObj.valor;
+
+    const patrimonioAtual = patrimonioAtualGeral.value;
+    const percentualAtingido = Math.min((patrimonioAtual / meta) * 100, 100);
+    const valorRestante = Math.max(meta - patrimonioAtual, 0);
+    const crescimentoMedio = estatisticasGerais.value.crescimentoMedioMensal;
+
+    let mesesRestantes: number | null = null;
+    let dataEstimada: string | null = null;
+
+    if (patrimonioAtual >= meta) {
+      mesesRestantes = 0;
+      dataEstimada = 'Meta atingida! 🎉';
+    } else if (crescimentoMedio > 0) {
+      mesesRestantes = Math.ceil(valorRestante / crescimentoMedio);
+      const hoje = new Date();
+      const { mes, ano } = adicionarMeses(hoje.getMonth() + 1, hoje.getFullYear(), mesesRestantes);
+      dataEstimada = `${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][mes - 1]}/${ano}`;
+    }
+
+    return { patrimonioAtual, meta, percentualAtingido, valorRestante, mesesRestantes, dataEstimada };
+  });
+
+  // Watcher para registrar a data de conclusão da meta automaticamente
+  if (!inicializado) { // Roda uma única vez
+    watch(
+      () => [patrimonioAtualGeral.value, metaAtiva.value],
+      ([atual, metaObj]) => {
+        if (metaObj && typeof metaObj === 'object') {
+          const m = metaObj as MetaPatrimonio;
+          if ((atual as number) >= m.valor && !m.dataConclusao) {
+            // Atingiu a meta agora, clone e atualiza
+            const clone = [...config.value.metas];
+            const idx = clone.findIndex(x => x.id === m.id);
+            if (idx !== -1) {
+              clone[idx] = { ...clone[idx], dataConclusao: new Date().toISOString() };
+              saveConfig({ metas: clone });
+            }
+          }
+        }
+      }
+    );
+  }
+
+
+  // ── Médias e desvio padrão (período filtrado) ────────────
   const mediasDesvio = computed(() => {
     const regs = registrosFiltrados.value;
     const n = regs.length;
@@ -77,35 +304,10 @@ export function usePatrimonio() {
 
     const mediaGanhos = regs.reduce((s, r) => s + r.ganhos, 0) / n;
     const mediaGastos = regs.reduce((s, r) => s + r.gastos, 0) / n;
-
     const dpGanhos = Math.sqrt(regs.reduce((s, r) => s + Math.pow(r.ganhos - mediaGanhos, 2), 0) / n);
     const dpGastos = Math.sqrt(regs.reduce((s, r) => s + Math.pow(r.gastos - mediaGastos, 2), 0) / n);
 
     return { mediaGanhos, dpGanhos, mediaGastos, dpGastos };
-  });
-
-  // ── Pontos para gráficos ───────────────────────────────────
-  const pontosGrafico = computed<PontoGrafico[]>(() => {
-    let acumulado = config.value.patrimonioInicial;
-    return registrosFiltrados.value.map(r => {
-      const saldo = r.ganhos - r.gastos;
-      acumulado += saldo;
-      return {
-        label: labelMes(r.mes, r.ano),
-        patrimonio: acumulado,
-        ganhos: r.ganhos,
-        gastos: r.gastos,
-        saldo,
-      };
-    });
-  });
-
-  // ── Estatísticas gerais (sem filtro) ──────────────────────
-  const patrimonioAtualGeral = computed(() => {
-    const saldoTotal = registrosOrdenados.value.reduce(
-      (s, r) => s + r.ganhos - r.gastos, 0
-    );
-    return config.value.patrimonioInicial + saldoTotal;
   });
 
   // ── CRUD ──────────────────────────────────────────────────
@@ -155,14 +357,19 @@ export function usePatrimonio() {
     storage.clearAllData();
   }
 
+  function recarregarDados() {
+    registros.value = storage.getRegistros();
+    config.value = storage.getConfig();
+  }
+
   // ── Filtro ────────────────────────────────────────────────
 
   function setFiltro(novoFiltro: Partial<FiltroPeriodo>) {
-    filtro.value = { ...filtro.value, ...novoFiltro };
+    filtroAtivo.value = { ...filtroAtivo.value, ...novoFiltro };
   }
 
   function resetarFiltro() {
-    filtro.value = gerarFiltroDefault();
+    filtroAtivo.value = gerarFiltroDefault();
   }
 
   // ── Privado ───────────────────────────────────────────────
@@ -176,12 +383,17 @@ export function usePatrimonio() {
     registros: registrosOrdenados,
     registrosFiltrados,
     config,
-    filtro,
+    filtro: filtroAtivo,
     // Computed
     estatisticas,
+    estatisticasGerais,
+    projecaoMeta,
     mediasDesvio,
     pontosGrafico,
     patrimonioAtualGeral,
+    patrimonioAcumulado,
+    metaAtiva,
+    metasConcluidas,
     // CRUD
     addRegistro,
     updateRegistro,
@@ -189,6 +401,9 @@ export function usePatrimonio() {
     // Config
     saveConfig,
     resetarDados,
+    recarregarDados,
+    adicionarMeta,
+    removerMetaAtiva,
     // Filtro
     setFiltro,
     resetarFiltro,
@@ -200,9 +415,12 @@ function gerarFiltroDefault(): FiltroPeriodo {
   const hoje = new Date();
   const anoAtual = hoje.getFullYear();
   const mesAtual = hoje.getMonth() + 1;
+  // Últimos 12 meses por padrão
+  const anoInicio = mesAtual === 12 ? anoAtual - 1 : anoAtual - 1;
+  const mesInicio = mesAtual === 12 ? 12 : mesAtual + 1;
   return {
-    mesInicio: mesAtual === 1 ? 1 : 1,
-    anoInicio: anoAtual - 1,
+    mesInicio: mesInicio > 12 ? 1 : mesInicio,
+    anoInicio: anoInicio,
     mesFim: mesAtual,
     anoFim: anoAtual,
   };
