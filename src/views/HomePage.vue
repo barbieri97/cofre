@@ -60,6 +60,47 @@
           <div class="ph-deco2" />
         </div>
 
+        <!-- ── Fôlego + Objetivo principal ────────────────── -->
+        <div v-if="registros.length" class="secao">
+          <div class="cards-grid-2">
+            <router-link to="/tabs/analise" class="link-limpo">
+              <CardFolego
+                :folego="folego"
+                :janela="config.janelaFolego"
+                :reserva-alvo-meses="config.reservaAlvoMeses"
+                compacto
+              />
+            </router-link>
+
+            <router-link to="/tabs/objetivos" class="link-limpo">
+              <div v-if="objetivoPrincipal && progressoPrincipal" class="objetivo-card">
+                <div class="oc-top">
+                  <ion-icon :icon="flagOutline" class="oc-icone" />
+                  <span class="oc-titulo">Objetivo</span>
+                </div>
+                <p class="oc-nome">{{ objetivoPrincipal.nome }}</p>
+                <div class="oc-bar-track">
+                  <div class="oc-bar-fill" :style="{ width: Math.min(progressoPrincipal.percentualAtingido, 100) + '%' }" />
+                </div>
+                <p class="oc-sub">
+                  {{ progressoPrincipal.percentualAtingido.toFixed(0) }}% de {{ formatCurrency(objetivoPrincipal.valor) }}
+                </p>
+                <p v-if="progressoPrincipal.dataEstimada" class="oc-estimativa">
+                  Estimativa: {{ progressoPrincipal.dataEstimada }}
+                </p>
+              </div>
+
+              <div v-else class="objetivo-card vazio">
+                <div class="oc-top">
+                  <ion-icon :icon="flagOutline" class="oc-icone" />
+                  <span class="oc-titulo">Objetivo</span>
+                </div>
+                <p class="oc-vazio-txt">Defina um objetivo de patrimônio para acompanhar o progresso.</p>
+              </div>
+            </router-link>
+          </div>
+        </div>
+
         <!-- ── Cards do último período ────────────────────── -->
         <div v-if="temUltimoPeriodo" class="secao">
           <p class="secao-titulo">Último {{ unidadePeriodo }} registrado</p>
@@ -116,39 +157,11 @@
           </div>
         </div>
 
-        <!-- ── Resumo do período filtrado ────────────────── -->
-        <div v-if="pontosGrafico.length > 1" class="secao">
-          <p class="secao-titulo">Resumo do período</p>
-          <div class="resumo-periodo">
-            <div class="rp-item">
-              <p class="rp-label">Total Receitas</p>
-              <p class="rp-valor verde-txt">{{ formatCurrency(estatisticas.totalGanhos) }}</p>
-            </div>
-            <div class="rp-sep" />
-            <div class="rp-item">
-              <p class="rp-label">Total Despesas</p>
-              <p class="rp-valor vermelho-txt">{{ formatCurrency(estatisticas.totalGastos) }}</p>
-            </div>
-            <div class="rp-sep" />
-            <div class="rp-item">
-              <p class="rp-label">Saldo Acumulado</p>
-              <p class="rp-valor" :class="estatisticas.saldoLiquido >= 0 ? 'verde-txt' : 'vermelho-txt'">
-                {{ formatCurrency(estatisticas.saldoLiquido) }}
-              </p>
-            </div>
-            <div class="rp-sep" />
-            <div class="rp-item">
-              <p class="rp-label">Tx. Poupança Média</p>
-              <p class="rp-valor ouro-txt">{{ formatPercent(estatisticas.taxaPoupanca) }}</p>
-            </div>
-          </div>
-        </div>
-
         <!-- ── Mini gráfico patrimônio ────────────────────── -->
         <div v-if="pontosGrafico.length" class="secao">
           <div class="secao-header">
             <p class="secao-titulo">Evolução do Patrimônio</p>
-            <router-link to="/tabs/graficos" class="ver-mais">Ver gráficos →</router-link>
+            <router-link to="/tabs/analise" class="ver-mais">Ver análise →</router-link>
           </div>
           <div class="grafico-container">
             <GraficoCanvas :dados="pontosGrafico" tipo="patrimonio" :height="180" />
@@ -163,7 +176,7 @@
           </div>
           <div class="ultimos-list">
             <div
-              v-for="(reg, i) in ultimosRegistros"
+              v-for="reg in ultimosRegistros"
               :key="reg.id"
               class="ultimo-item"
             >
@@ -211,14 +224,18 @@ import {
 import {
   filterOutline, closeOutline, trendingUpOutline, trendingDownOutline,
   arrowUpOutline, arrowDownOutline, walletOutline,
-  saveOutline, barChartOutline, settingsOutline
+  saveOutline, barChartOutline, settingsOutline, flagOutline
 } from 'ionicons/icons';
 import { usePatrimonio } from '../composables/usePatrimonio';
 import GraficoCanvas from '../components/GraficoCanvas.vue';
 import FiltroPeriodoPanel from '../components/FiltroPeriodoPanel.vue';
+import CardFolego from '../components/CardFolego.vue';
 import { MESES_ABREV, formatCurrency, formatPercent, labelMes, labelAno } from '../types';
 
-const { config, filtro, registrosFiltrados, estatisticas, pontosGrafico } = usePatrimonio();
+const {
+  config, filtro, registros, registrosFiltrados, estatisticas, pontosGrafico,
+  folego, objetivoPrincipal, progressoDe,
+} = usePatrimonio();
 
 const mostrarFiltro = ref(false);
 
@@ -234,6 +251,10 @@ const temUltimoPeriodo = computed(() => pontosGrafico.value.length > 0);
 
 const ultimosRegistros = computed(() =>
   [...registrosFiltrados.value].slice(-4).reverse()
+);
+
+const progressoPrincipal = computed(() =>
+  objetivoPrincipal.value ? progressoDe(objetivoPrincipal.value) : null
 );
 </script>
 
@@ -342,21 +363,42 @@ const ultimosRegistros = computed(() =>
 .mc-label { font-size: 0.62rem; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 2px; }
 .mc-valor { font-size: 0.82rem; font-weight: 700; color: #F0F6FC; margin: 0; }
 
-/* ── Resumo período ─────────────────────────── */
-.resumo-periodo {
+/* ── Fôlego + Objetivo principal ────────────── */
+.link-limpo { text-decoration: none; display: block; height: 100%; }
+
+.objetivo-card {
+  height: 100%;
   background: #161B22;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.06);
-  padding: 14px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
-  align-items: center;
-  gap: 0;
+  border-radius: 16px;
+  border: 1px solid rgba(139,92,246,0.2);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
 }
-.rp-item { text-align: center; }
-.rp-label { font-size: 0.6rem; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 4px; }
-.rp-valor { font-size: 0.82rem; font-weight: 700; color: #F0F6FC; margin: 0; }
-.rp-sep { width: 1px; background: rgba(255,255,255,0.07); height: 28px; }
+.objetivo-card.vazio { border-style: dashed; border-color: rgba(255,255,255,0.1); }
+
+.oc-top { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.oc-icone { font-size: 1rem; color: #8B5CF6; }
+.oc-titulo {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: #9CA3AF;
+}
+.oc-nome {
+  font-size: 0.88rem; font-weight: 700; color: #F0F6FC; margin: 0 0 10px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.oc-bar-track {
+  height: 7px; background: rgba(255,255,255,0.08);
+  border-radius: 7px; overflow: hidden; margin-bottom: 8px;
+}
+.oc-bar-fill {
+  height: 100%; border-radius: 7px;
+  background: linear-gradient(90deg, #8B5CF6, #6366F1);
+  transition: width 0.8s ease;
+}
+.oc-sub { font-size: 0.7rem; color: #9CA3AF; margin: 0; }
+.oc-estimativa { font-size: 0.68rem; color: #F59E0B; margin: 6px 0 0; }
+.oc-vazio-txt { font-size: 0.75rem; color: #6B7280; line-height: 1.5; margin: 0; }
 
 /* ── Últimos registros ──────────────────────── */
 .ultimos-list { display: flex; flex-direction: column; gap: 8px; }

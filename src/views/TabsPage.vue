@@ -13,19 +13,14 @@
           <ion-label>Registros</ion-label>
         </ion-tab-button>
 
-        <ion-tab-button tab="graficos" href="/tabs/graficos">
-          <ion-icon :icon="barChartOutline" />
-          <ion-label>Gráficos</ion-label>
+        <ion-tab-button tab="analise" href="/tabs/analise">
+          <ion-icon :icon="analyticsOutline" />
+          <ion-label>Análise</ion-label>
         </ion-tab-button>
 
-        <ion-tab-button tab="estatisticas" href="/tabs/estatisticas">
-          <ion-icon :icon="statsChartOutline" />
-          <ion-label>Stats</ion-label>
-        </ion-tab-button>
-
-        <ion-tab-button tab="metas" href="/tabs/metas">
+        <ion-tab-button tab="objetivos" href="/tabs/objetivos">
           <ion-icon :icon="flagOutline" />
-          <ion-label>Metas</ion-label>
+          <ion-label>Objetivos</ion-label>
         </ion-tab-button>
       </ion-tab-bar>
     </ion-tabs>
@@ -37,7 +32,7 @@ import {
   IonPage, IonTabs, IonTabBar, IonTabButton,
   IonIcon, IonLabel, IonRouterOutlet
 } from '@ionic/vue';
-import { homeOutline, listOutline, barChartOutline, statsChartOutline, flagOutline } from 'ionicons/icons';
+import { homeOutline, listOutline, analyticsOutline, flagOutline } from 'ionicons/icons';
 </script>
 
 <style scoped>

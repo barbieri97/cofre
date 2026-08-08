@@ -25,6 +25,19 @@
 
       <!-- Lista de registros -->
       <div v-else class="lista-wrap">
+        <!-- Meses sem registro entre o primeiro e o último: como cada mês é um
+             registro único, um mês esquecido some da série em vez de aparecer
+             como buraco, distorcendo médias, fôlego e crescimento. -->
+        <div v-if="lacunas.length" class="lacunas-aviso">
+          <p class="la-titulo">⚠️ {{ lacunas.length }} {{ lacunas.length === 1 ? 'mês sem registro' : 'meses sem registro' }}</p>
+          <p class="la-meses">{{ lacunasResumo }}</p>
+          <p class="la-desc">Suas médias, o fôlego e o crescimento patrimonial ficam distorcidos enquanto esses meses faltarem.</p>
+          <ion-button id="btn-preencher-lacuna" fill="outline" color="warning" size="small" @click="abrirModal()">
+            <ion-icon :icon="addOutline" slot="start" />
+            Adicionar mês
+          </ion-button>
+        </div>
+
         <!-- Resumo do período total -->
         <div class="resumo-total">
           <div class="rt-item">
@@ -161,7 +174,7 @@ import RegistroModal from '../components/RegistroModal.vue';
 import type { RegistroMensal } from '../types';
 import { MESES_ABREV, formatCurrency } from '../types';
 
-const { registros, addRegistro, updateRegistro, deleteRegistro } = usePatrimonio();
+const { registros, lacunas, addRegistro, updateRegistro, deleteRegistro } = usePatrimonio();
 
 // ── Modal ─────────────────────────────────────────────────────
 const modalAberto = ref(false);
@@ -236,6 +249,13 @@ const registrosOrdemDecrescente = computed(() =>
 const totalGanhos = computed(() => registros.value.reduce((s, r) => s + r.ganhos, 0));
 const totalGastos = computed(() => registros.value.reduce((s, r) => s + r.gastos, 0));
 
+/** Lista os meses faltantes; acima de 6 resume para não estourar o card. */
+const lacunasResumo = computed(() => {
+  const labels = lacunas.value.map(l => l.label);
+  if (labels.length <= 6) return labels.join(' · ');
+  return `${labels.slice(0, 6).join(' · ')} e mais ${labels.length - 6}`;
+});
+
 function barWidth(valor: number, reg: RegistroMensal): number {
   const max = Math.max(reg.ganhos, reg.gastos, 1);
   return Math.min((valor / max) * 100, 100);
@@ -259,6 +279,19 @@ function barWidth(valor: number, reg: RegistroMensal): number {
 
 /* Resumo */
 .lista-wrap { padding: 16px 16px 100px; }
+
+/* ── Aviso de meses faltantes ─────────────────── */
+.lacunas-aviso {
+  background: rgba(245,158,11,0.06);
+  border: 1px solid rgba(245,158,11,0.22);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.la-titulo { font-size: 0.82rem; font-weight: 700; color: #F59E0B; margin: 0 0 6px; }
+.la-meses { font-size: 0.78rem; color: #FCD34D; margin: 0 0 8px; line-height: 1.5; }
+.la-desc { font-size: 0.72rem; color: #9CA3AF; margin: 0 0 12px; line-height: 1.5; }
+
 .resumo-total {
   background: #161B22;
   border-radius: 14px;

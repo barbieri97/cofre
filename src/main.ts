@@ -34,6 +34,12 @@ import '@ionic/vue/css/palettes/dark.system.css';
 /* Theme variables */
 import './theme/variables.css';
 
+import { migrarSchema } from './services/storageService';
+
+/* Normaliza os dados no localStorage antes que qualquer componente os leia —
+   usePatrimonio faz a carga inicial no primeiro uso do composable. */
+migrarSchema();
+
 const app = createApp(App)
   .use(IonicVue)
   .use(router);

@@ -3,13 +3,18 @@
 // Toda a lógica de negócio reativa do app.
 // ============================================================
 
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import type {
   RegistroMensal, ConfigApp, EstatisticasPeriodo,
-  EstatisticasGerais, ProjecaoMeta, MetaPatrimonio,
+  EstatisticasGerais, Objetivo, JanelaFolego,
   FiltroPeriodo, PontoGrafico
 } from '../types';
-import { generateId, labelMes, labelAno, adicionarMeses, agruparPorAno } from '../types';
+import { generateId, labelMes, labelAno, agruparPorAno } from '../types';
+import { calcularFolego } from '../domain/runway';
+import {
+  derivarConclusao, statusObjetivo, progressoObjetivo, ordenarObjetivos,
+} from '../domain/objetivos';
+import { mesesFaltantes } from '../domain/lacunas';
 import * as storage from '../services/storageService';
 
 // ── Estado Global (singleton reativo) ───────────────────────
@@ -18,6 +23,7 @@ import * as storage from '../services/storageService';
 // FiltroPeriodoPanel, que altera o filtro lido pelas páginas.
 const registros = ref<RegistroMensal[]>([]);
 const config = ref<ConfigApp>(storage.getConfig());
+const objetivos = ref<Objetivo[]>([]);
 const filtroAtivo = ref<FiltroPeriodo>(gerarFiltroDefault());
 
 let inicializado = false;
@@ -28,6 +34,7 @@ export function usePatrimonio() {
   if (!inicializado) {
     registros.value = storage.getRegistros();
     config.value = storage.getConfig();
+    objetivos.value = storage.getObjetivos();
     inicializado = true;
   }
 
@@ -236,102 +243,112 @@ export function usePatrimonio() {
     };
   });
 
-  // ── Metas (Ativa e Histórico) ─────────────────────────────
-  const metaAtiva = computed<MetaPatrimonio | null>(() => {
-    return config.value.metas.find(m => !m.dataConclusao) || null;
-  });
+  // ── Fôlego financeiro ─────────────────────────────────────
+  // Quantos meses o patrimônio cobre no padrão de gastos atual, se nada mais
+  // entrar. A janela da média é escolhida pelo usuário e persiste na config.
+  const folego = computed(() =>
+    calcularFolego(registrosOrdenados.value, patrimonioAtualGeral.value, config.value.janelaFolego)
+  );
 
-  const metasConcluidas = computed<MetaPatrimonio[]>(() => {
-    return [...config.value.metas]
-      .filter(m => m.dataConclusao)
-      .sort((a, b) => new Date(b.dataConclusao!).getTime() - new Date(a.dataConclusao!).getTime());
-  });
-
-  function adicionarMeta(valor: number) {
-    if (valor <= 0) return;
-    // Se já houver meta ativa, removemos ela para iniciar uma nova (mantendo apenas o histórico)
-    const historico = config.value.metas.filter(m => m.dataConclusao);
-    historico.push({
-      id: generateId(),
-      valor,
-      dataInicio: new Date().toISOString(),
-    });
-    saveConfig({ metas: historico });
+  function setJanelaFolego(janela: JanelaFolego) {
+    saveConfig({ janelaFolego: janela });
   }
 
-  function removerMetaAtiva() {
-    const historico = config.value.metas.filter(m => m.dataConclusao);
-    saveConfig({ metas: historico });
+  // ── Lacunas no histórico ──────────────────────────────────
+  const lacunas = computed(() => mesesFaltantes(registrosOrdenados.value));
+
+  // ── Objetivos ─────────────────────────────────────────────
+  // A conclusão é derivada da série de patrimônio (ver domain/objetivos.ts),
+  // não observada em tempo real: assim ela vale retroativamente e não depende
+  // de o app estar aberto no mês em que o patrimônio cruzou o alvo.
+  const objetivosOrdenados = computed(() =>
+    ordenarObjetivos(objetivos.value, patrimonioAcumulado.value, patrimonioAtualGeral.value)
+  );
+
+  const objetivosAtivos = computed(() =>
+    objetivosOrdenados.value.filter(o => statusObjetivo(o, patrimonioAcumulado.value) === 'ativo')
+  );
+
+  const objetivosConcluidos = computed(() =>
+    objetivosOrdenados.value.filter(o => statusObjetivo(o, patrimonioAcumulado.value) === 'concluido')
+  );
+
+  /** Objetivo destacado na Home: o marcado como principal ou, na falta, o ativo mais próximo. */
+  const objetivoPrincipal = computed<Objetivo | null>(() =>
+    objetivosAtivos.value.find(o => o.principal) ?? objetivosAtivos.value[0] ?? null
+  );
+
+  /** Conclusão (derivada ou manual) de um objetivo */
+  function conclusaoDe(obj: Objetivo) {
+    return derivarConclusao(obj, patrimonioAcumulado.value);
   }
 
-  // ── Projeção de meta ──────────────────────────────────────
-  const projecaoMeta = computed<ProjecaoMeta | null>(() => {
-    const metaObj = metaAtiva.value;
-    if (!metaObj) return null;
-    const meta = metaObj.valor;
-
-    const patrimonioAtual = patrimonioAtualGeral.value;
-    const percentualAtingido = Math.min((patrimonioAtual / meta) * 100, 100);
-    const valorRestante = Math.max(meta - patrimonioAtual, 0);
-    const crescimentoMedio = estatisticasGerais.value.crescimentoMedioMensal;
-
-    let mesesRestantes: number | null = null;
-    let dataEstimada: string | null = null;
-
-    if (patrimonioAtual >= meta) {
-      mesesRestantes = 0;
-      dataEstimada = 'Meta atingida! 🎉';
-    } else if (crescimentoMedio > 0) {
-      mesesRestantes = Math.ceil(valorRestante / crescimentoMedio);
-      const hoje = new Date();
-      const { mes, ano } = adicionarMeses(hoje.getMonth() + 1, hoje.getFullYear(), mesesRestantes);
-      dataEstimada = `${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][mes - 1]}/${ano}`;
-    }
-
-    return { patrimonioAtual, meta, percentualAtingido, valorRestante, mesesRestantes, dataEstimada };
-  });
-
-  // Watcher para registrar a data de conclusão da meta automaticamente
-  if (!inicializado) { // Roda uma única vez
-    watch(
-      () => [patrimonioAtualGeral.value, metaAtiva.value],
-      ([atual, metaObj]) => {
-        if (metaObj && typeof metaObj === 'object') {
-          const m = metaObj as MetaPatrimonio;
-          if ((atual as number) >= m.valor && !m.dataConclusao) {
-            // Atingiu a meta agora, clone e atualiza
-            const clone = [...config.value.metas];
-            const idx = clone.findIndex(x => x.id === m.id);
-            if (idx !== -1) {
-              clone[idx] = { ...clone[idx], dataConclusao: new Date().toISOString() };
-              saveConfig({ metas: clone });
-            }
-          }
-        }
-      }
+  /** Progresso e projeção de chegada de um objetivo */
+  function progressoDe(obj: Objetivo) {
+    return progressoObjetivo(
+      obj,
+      patrimonioAtualGeral.value,
+      estatisticasGerais.value.crescimentoMedioMensal
     );
   }
 
+  function addObjetivo(
+    dados: Omit<Objetivo, 'id' | 'criadoEm' | 'atualizadoEm'>
+  ): Objetivo | null {
+    if (dados.valor <= 0) return null;
+    const agora = new Date().toISOString();
+    const novo: Objetivo = { ...dados, id: generateId(), criadoEm: agora, atualizadoEm: agora };
+    // Só um objetivo pode ser o principal.
+    const restantes = novo.principal
+      ? objetivos.value.map(o => ({ ...o, principal: false }))
+      : [...objetivos.value];
+    objetivos.value = [...restantes, novo];
+    _persistObjetivos();
+    return novo;
+  }
 
-  // ── Médias e desvio padrão (período filtrado) ────────────
-  const mediasDesvio = computed(() => {
-    const regs = registrosFiltrados.value;
-    const n = regs.length;
-    if (n === 0) return { mediaGanhos: 0, dpGanhos: 0, mediaGastos: 0, dpGastos: 0 };
+  /** Edita qualquer campo, inclusive datas de início e de conclusão. */
+  function updateObjetivo(
+    id: string,
+    patch: Partial<Omit<Objetivo, 'id' | 'criadoEm'>>
+  ): boolean {
+    const idx = objetivos.value.findIndex(o => o.id === id);
+    if (idx === -1) return false;
 
-    const mediaGanhos = regs.reduce((s, r) => s + r.ganhos, 0) / n;
-    const mediaGastos = regs.reduce((s, r) => s + r.gastos, 0) / n;
-    const dpGanhos = Math.sqrt(regs.reduce((s, r) => s + Math.pow(r.ganhos - mediaGanhos, 2), 0) / n);
-    const dpGastos = Math.sqrt(regs.reduce((s, r) => s + Math.pow(r.gastos - mediaGastos, 2), 0) / n);
+    let lista = [...objetivos.value];
+    if (patch.principal) lista = lista.map(o => ({ ...o, principal: false }));
+    lista[idx] = { ...lista[idx], ...patch, atualizadoEm: new Date().toISOString() };
+    objetivos.value = lista;
+    _persistObjetivos();
+    return true;
+  }
 
-    return { mediaGanhos, dpGanhos, mediaGastos, dpGastos };
-  });
+  function deleteObjetivo(id: string): boolean {
+    const antes = objetivos.value.length;
+    objetivos.value = objetivos.value.filter(o => o.id !== id);
+    _persistObjetivos();
+    return objetivos.value.length < antes;
+  }
+
+  function definirPrincipal(id: string): boolean {
+    if (!objetivos.value.some(o => o.id === id)) return false;
+    objetivos.value = objetivos.value.map(o => ({ ...o, principal: o.id === id }));
+    _persistObjetivos();
+    return true;
+  }
 
   // ── CRUD ──────────────────────────────────────────────────
 
+  /**
+   * Há outro registro ocupando este mês? `ignorarId` exclui o próprio registro
+   * da checagem durante uma edição.
+   */
+  function mesOcupado(mes: number, ano: number, ignorarId?: string): boolean {
+    return registros.value.some(r => r.mes === mes && r.ano === ano && r.id !== ignorarId);
+  }
+
   function addRegistro(dados: Omit<RegistroMensal, 'id' | 'createdAt' | 'updatedAt'>): boolean {
-    const existe = registros.value.some(r => r.mes === dados.mes && r.ano === dados.ano);
-    if (existe) return false;
+    if (mesOcupado(dados.mes, dados.ano)) return false;
     const novo: RegistroMensal = {
       ...dados,
       id: generateId(),
@@ -346,6 +363,13 @@ export function usePatrimonio() {
   function updateRegistro(id: string, dados: Partial<Omit<RegistroMensal, 'id' | 'createdAt'>>): boolean {
     const idx = registros.value.findIndex(r => r.id === id);
     if (idx === -1) return false;
+
+    // Sem esta checagem, mover um registro para um mês já ocupado criava uma
+    // duplicata silenciosa — dois registros do mesmo mês somando em dobro.
+    const mes = dados.mes ?? registros.value[idx].mes;
+    const ano = dados.ano ?? registros.value[idx].ano;
+    if (mesOcupado(mes, ano, id)) return false;
+
     const atualizado = { ...registros.value[idx], ...dados, updatedAt: new Date().toISOString() };
     const lista = [...registros.value];
     lista[idx] = atualizado;
@@ -369,14 +393,16 @@ export function usePatrimonio() {
   }
 
   function resetarDados() {
-    registros.value = [];
-    config.value = { ...storage.getConfig(), patrimonioInicial: 0, primeiroUso: true };
     storage.clearAllData();
+    registros.value = [];
+    objetivos.value = [];
+    config.value = storage.getConfig();
   }
 
   function recarregarDados() {
     registros.value = storage.getRegistros();
     config.value = storage.getConfig();
+    objetivos.value = storage.getObjetivos();
   }
 
   // ── Filtro ────────────────────────────────────────────────
@@ -395,6 +421,10 @@ export function usePatrimonio() {
     storage.saveRegistros(registros.value);
   }
 
+  function _persistObjetivos() {
+    storage.saveObjetivos(objetivos.value);
+  }
+
   return {
     // Estado
     registros: registrosOrdenados,
@@ -404,23 +434,32 @@ export function usePatrimonio() {
     // Computed
     estatisticas,
     estatisticasGerais,
-    projecaoMeta,
-    mediasDesvio,
     pontosGrafico,
     patrimonioAtualGeral,
     patrimonioAcumulado,
-    metaAtiva,
-    metasConcluidas,
+    folego,
+    lacunas,
+    // Objetivos
+    objetivos: objetivosOrdenados,
+    objetivosAtivos,
+    objetivosConcluidos,
+    objetivoPrincipal,
+    conclusaoDe,
+    progressoDe,
+    addObjetivo,
+    updateObjetivo,
+    deleteObjetivo,
+    definirPrincipal,
     // CRUD
     addRegistro,
     updateRegistro,
     deleteRegistro,
+    mesOcupado,
     // Config
     saveConfig,
+    setJanelaFolego,
     resetarDados,
     recarregarDados,
-    adicionarMeta,
-    removerMetaAtiva,
     // Filtro
     setFiltro,
     resetarFiltro,

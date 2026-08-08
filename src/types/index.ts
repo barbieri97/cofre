@@ -14,6 +14,10 @@ export interface RegistroMensal {
   updatedAt: string; // ISO date string
 }
 
+/**
+ * Formato legado de meta (schema v2). Mantido exportado apenas para tipar a
+ * migração v2 → v3 em storageService; nenhum código novo deve usá-lo.
+ */
 export interface MetaPatrimonio {
   id: string;
   valor: number;
@@ -21,13 +25,38 @@ export interface MetaPatrimonio {
   dataConclusao?: string; // ISO date string
 }
 
+/**
+ * Objetivo de patrimônio rastreável. Diferente da MetaPatrimonio legada, um
+ * objetivo nunca é descartado ao ser editado nem ao ser concluído — todos os
+ * campos são editáveis e o histórico é permanente.
+ */
+export interface Objetivo {
+  id: string;
+  nome: string;
+  valor: number;           // patrimônio-alvo
+  dataInicio: string;      // ISO date string
+  dataAlvo?: string;       // ISO date string — prazo desejado (opcional)
+  /**
+   * Sobrescrita MANUAL da conclusão. Quando ausente, a conclusão é derivada da
+   * série de patrimônio (ver src/domain/objetivos.ts) — o que funciona
+   * retroativamente para objetivos criados sobre um histórico já existente.
+   */
+  dataConclusao?: string;  // ISO date string
+  principal?: boolean;     // destacado na Home (no máximo um)
+  criadoEm: string;        // ISO date string
+  atualizadoEm: string;    // ISO date string
+}
+
+/** Janela de meses usada para a média de gastos do fôlego. 0 = todo o histórico */
+export type JanelaFolego = 3 | 6 | 12 | 0;
+
 /** Configurações globais do aplicativo */
 export interface ConfigApp {
   patrimonioInicial: number;
-  moeda: string;           // ex: 'BRL'
-  simboloMoeda: string;    // ex: 'R$'
   primeiroUso: boolean;
-  metas: MetaPatrimonio[]; // Lista de metas (histórico e atual)
+  janelaFolego: JanelaFolego;
+  /** Reserva desejada, em meses de gasto. Usada só para colorir o card do fôlego. */
+  reservaAlvoMeses: number;
 }
 
 /** Estatísticas calculadas para um período filtrado */
@@ -88,16 +117,6 @@ export interface EstatisticasGerais {
   crescimentoMedioMensal: number;
 }
 
-/** Projeção de meta patrimonial */
-export interface ProjecaoMeta {
-  patrimonioAtual: number;
-  meta: number;
-  percentualAtingido: number;
-  valorRestante: number;
-  mesesRestantes: number | null;  // null = crescimento insuficiente
-  dataEstimada: string | null;    // ex: 'Mar/2028'
-}
-
 /** Nomes dos meses em Português */
 export const MESES_PT = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -123,9 +142,32 @@ export function formatCurrency(value: number): string {
   }).format(value);
 }
 
+/** Formata moeda abreviada (R$ 12k / R$ 1.2M), para tabelas e eixos apertados */
+export function formatCurrencyK(value: number): string {
+  if (Math.abs(value) >= 1_000_000) return `R$ ${(value / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(value) >= 1_000) return `R$ ${(value / 1_000).toFixed(0)}k`;
+  return formatCurrency(value);
+}
+
 /** Formata percentual */
 export function formatPercent(value: number, casas = 1): string {
   return `${value.toFixed(casas)}%`;
+}
+
+/**
+ * Traduz uma quantidade de meses para linguagem natural ("1 ano e 6 meses").
+ * Arredonda para o mês mais próximo — os dados do app são mensais, então
+ * qualquer precisão abaixo disso seria inventada.
+ */
+export function descreverMeses(meses: number): string {
+  const total = Math.round(meses);
+  if (total <= 0) return 'menos de 1 mês';
+  const anos = Math.floor(total / 12);
+  const resto = total % 12;
+  const partes: string[] = [];
+  if (anos > 0) partes.push(`${anos} ano${anos > 1 ? 's' : ''}`);
+  if (resto > 0) partes.push(`${resto} ${resto > 1 ? 'meses' : 'mês'}`);
+  return partes.join(' e ');
 }
 
 /** Label de mês abreviado */
@@ -161,12 +203,25 @@ export function agruparPorAno(registros: RegistroMensal[]): AgregadoAnual[] {
   return [...mapa.values()].sort((a, b) => a.ano - b.ano);
 }
 
+/** Chave ordenável de um mês (ano*100 + mes), usada para comparar e filtrar */
+export function chaveMes(mes: number, ano: number): number {
+  return ano * 100 + mes;
+}
+
 /** Compara dois meses (retorna negativo, 0 ou positivo) */
 export function compararMes(
   mesA: number, anoA: number,
   mesB: number, anoB: number
 ): number {
-  return (anoA * 100 + mesA) - (anoB * 100 + mesB);
+  return chaveMes(mesA, anoA) - chaveMes(mesB, anoB);
+}
+
+/** Quantidade de meses de A até B (negativa se B vier antes de A) */
+export function diferencaMeses(
+  mesA: number, anoA: number,
+  mesB: number, anoB: number
+): number {
+  return (anoB * 12 + (mesB - 1)) - (anoA * 12 + (mesA - 1));
 }
 
 /** Adiciona N meses a um mês/ano */

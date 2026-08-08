@@ -28,14 +28,9 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend,
 
 export type TipoGrafico =
   | 'patrimonio'
-  | 'receita'
-  | 'despesa'
   | 'poupanca'
   | 'receita-despesa'
-  | 'crescimento'
-  | 'linha'            // alias legado
-  | 'linha-comparativo' // alias legado
-  | 'barra';           // alias legado
+  | 'crescimento';
 
 const props = withDefaults(defineProps<{
   dados: PontoGrafico[];
@@ -46,34 +41,27 @@ const props = withDefaults(defineProps<{
   height: 240,
 });
 
-const isLine = computed(() =>
-  ['patrimonio', 'receita', 'despesa', 'poupanca', 'linha', 'linha-comparativo'].includes(props.tipo)
-);
-const isBar = computed(() =>
-  ['receita-despesa', 'crescimento', 'barra'].includes(props.tipo)
-);
+const isLine = computed(() => ['patrimonio', 'poupanca'].includes(props.tipo));
+const isBar = computed(() => ['receita-despesa', 'crescimento'].includes(props.tipo));
 
 // ── Paleta de cores ──────────────────────────────────────────
 const VERDE   = '#10B981';
-const VERDE_A = 'rgba(16,185,129,0.15)';
 const ROXO    = '#8B5CF6';
 const ROXO_A  = 'rgba(139,92,246,0.18)';
 const VERMELHO = '#EF4444';
-const VERMELHO_A = 'rgba(239,68,68,0.15)';
 const AZUL    = '#3B82F6';
-const AZUL_A  = 'rgba(59,130,246,0.15)';
 const OURO    = '#F59E0B';
 const OURO_A  = 'rgba(245,158,11,0.15)';
 
-function lineDataset(label: string, data: number[], color: string, colorA: string, fill = true) {
+function lineDataset(label: string, data: number[], color: string, colorA: string) {
   return {
     label,
     data,
     borderColor: color,
-    backgroundColor: fill ? colorA : 'transparent',
+    backgroundColor: colorA,
+    fill: true,
     borderWidth: 2.5,
     tension: 0.4,
-    fill,
     pointBackgroundColor: '#0D1117',
     pointBorderColor: color,
     pointBorderWidth: 2,
@@ -88,24 +76,9 @@ const chartData = computed(() => {
   switch (props.tipo) {
     // ── Patrimônio ──────────────────────────────────────────
     case 'patrimonio':
-    case 'linha':
       return {
         labels,
         datasets: [lineDataset('Patrimônio', props.dados.map(d => d.patrimonio), ROXO, ROXO_A)],
-      };
-
-    // ── Receita ─────────────────────────────────────────────
-    case 'receita':
-      return {
-        labels,
-        datasets: [lineDataset('Receita', props.dados.map(d => d.ganhos), VERDE, VERDE_A)],
-      };
-
-    // ── Despesa ─────────────────────────────────────────────
-    case 'despesa':
-      return {
-        labels,
-        datasets: [lineDataset('Despesa', props.dados.map(d => d.gastos), VERMELHO, VERMELHO_A)],
       };
 
     // ── Taxa de Poupança ────────────────────────────────────
@@ -117,7 +90,6 @@ const chartData = computed(() => {
 
     // ── Receita vs Despesa (barras comparativas) ────────────
     case 'receita-despesa':
-    case 'barra':
       return {
         labels,
         datasets: [
@@ -183,16 +155,6 @@ const chartData = computed(() => {
       };
     }
 
-    // ── Legado: linha-comparativo ───────────────────────────
-    case 'linha-comparativo':
-      return {
-        labels,
-        datasets: [
-          lineDataset('Receita', props.dados.map(d => d.ganhos), VERDE, 'transparent', false),
-          lineDataset('Despesa', props.dados.map(d => d.gastos), VERMELHO, 'transparent', false),
-        ],
-      };
-
     default:
       return { labels, datasets: [] };
   }
@@ -200,7 +162,7 @@ const chartData = computed(() => {
 
 // ── Opções do gráfico ────────────────────────────────────────
 const isPoupanca = computed(() => props.tipo === 'poupanca');
-const isMixed = computed(() => ['receita-despesa', 'barra', 'crescimento'].includes(props.tipo));
+const isMixed = computed(() => ['receita-despesa', 'crescimento'].includes(props.tipo));
 
 const chartOptions = computed(() => ({
   responsive: true,
@@ -212,7 +174,7 @@ const chartOptions = computed(() => ({
   },
   plugins: {
     legend: {
-      display: isMixed.value || props.tipo === 'linha-comparativo',
+      display: isMixed.value,
       position: 'bottom' as const,
       labels: {
         color: '#9CA3AF',

@@ -192,12 +192,13 @@ function validarNumero(campo: 'ganhos' | 'gastos') {
   if (val < 0) form.value[key] = '0';
 }
 
-const erroMesDuplicado = computed(() => {
-  if (modoEdicao.value) return false;
-  return props.registrosExistentes.some(
-    r => r.mes === form.value.mes && r.ano === form.value.ano
-  );
-});
+// Na edição, o próprio registro não conta como conflito — mas qualquer outro
+// conta: mover um registro para um mês já ocupado criaria uma duplicata.
+const erroMesDuplicado = computed(() =>
+  props.registrosExistentes.some(
+    r => r.mes === form.value.mes && r.ano === form.value.ano && r.id !== props.registro?.id
+  )
+);
 
 const formularioValido = computed(() =>
   !erroMesDuplicado.value &&

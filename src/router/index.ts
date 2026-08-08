@@ -22,25 +22,25 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('../views/RegistrosPage.vue'),
       },
       {
-        path: 'graficos',
-        name: 'Graficos',
-        component: () => import('../views/GraficosPage.vue'),
+        path: 'analise',
+        name: 'Analise',
+        component: () => import('../views/AnalisePage.vue'),
+      },
+      {
+        path: 'objetivos',
+        name: 'Objetivos',
+        component: () => import('../views/ObjetivosPage.vue'),
       },
       {
         path: 'configuracoes',
         name: 'Configuracoes',
         component: () => import('../views/ConfigPage.vue'),
       },
-      {
-        path: 'estatisticas',
-        name: 'Estatisticas',
-        component: () => import('../views/EstatisticasPage.vue'),
-      },
-      {
-        path: 'metas',
-        name: 'Metas',
-        component: () => import('../views/MetasPage.vue'),
-      },
+      // Rotas da v1: Gráficos e Stats viraram Análise, Metas virou Objetivos.
+      // Mantidas como redirect por causa de deep links já existentes.
+      { path: 'graficos', redirect: '/tabs/analise' },
+      { path: 'estatisticas', redirect: '/tabs/analise' },
+      { path: 'metas', redirect: '/tabs/objetivos' },
     ]
   }
 ];

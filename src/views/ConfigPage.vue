@@ -14,7 +14,7 @@
           <div class="ch-icon">🔒</div>
           <h2 class="ch-nome">Cofre</h2>
           <p class="ch-sub">Controle de Patrimônio Pessoal</p>
-          <p class="ch-versao">v2.0.0</p>
+          <p class="ch-versao">v{{ APP_VERSION }}</p>
         </div>
 
         <!-- Patrimônio Inicial -->
@@ -56,30 +56,37 @@
           </div>
         </div>
 
-        <!-- Visão Geral -->
+        <!-- Reserva desejada -->
         <div class="secao">
-          <p class="secao-titulo">Visão Geral</p>
-          <div class="stats-list">
-            <div class="stat-row">
-              <span class="sr-label">Total de registros</span>
-              <span class="sr-valor">{{ registros.length }} meses</span>
-            </div>
-            <div class="stat-row" v-if="registros.length">
-              <span class="sr-label">Período registrado</span>
-              <span class="sr-valor">
-                {{ labelMes(registros[0].mes, registros[0].ano) }}
-                → {{ labelMes(registros[registros.length - 1].mes, registros[registros.length - 1].ano) }}
-              </span>
-            </div>
-            <div class="stat-row">
-              <span class="sr-label">Patrimônio inicial</span>
-              <span class="sr-valor">{{ formatCurrency(config.patrimonioInicial) }}</span>
-            </div>
-            <div class="stat-row">
-              <span class="sr-label">Patrimônio atual</span>
-              <span class="sr-valor" :class="patrimonioAtualGeral >= 0 ? 'verde' : 'vermelho'">
-                {{ formatCurrency(patrimonioAtualGeral) }}
-              </span>
+          <p class="secao-titulo">Reserva Desejada</p>
+          <div class="campo-card">
+            <p class="campo-desc">
+              Quantos meses de gasto você quer ter cobertos pelo patrimônio. Define quando o
+              card de Fôlego fica verde.
+            </p>
+            <div class="reserva-row">
+              <ion-button
+                id="btn-reserva-menos"
+                fill="clear"
+                color="medium"
+                :disabled="reservaMeses <= 1"
+                @click="ajustarReserva(-1)"
+              >
+                <ion-icon :icon="removeCircleOutline" slot="icon-only" />
+              </ion-button>
+              <div class="reserva-valor">
+                <span class="rv-num">{{ reservaMeses }}</span>
+                <span class="rv-unidade">{{ reservaMeses === 1 ? 'mês' : 'meses' }}</span>
+              </div>
+              <ion-button
+                id="btn-reserva-mais"
+                fill="clear"
+                color="medium"
+                :disabled="reservaMeses >= 60"
+                @click="ajustarReserva(1)"
+              >
+                <ion-icon :icon="addCircleOutline" slot="icon-only" />
+              </ion-button>
             </div>
           </div>
         </div>
@@ -145,7 +152,7 @@
           </div>
         </div>
 
-        <p class="versao">Cofre v2.0.0 · Dados salvos localmente</p>
+        <p class="versao">Cofre v{{ APP_VERSION }} · Dados salvos localmente</p>
       </div>
     </ion-content>
 
@@ -171,17 +178,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
   IonLabel, IonInput, IonButton, IonIcon, IonToast, IonAlert
 } from '@ionic/vue';
-import { saveOutline, trashOutline, downloadOutline, cloudUploadOutline } from 'ionicons/icons';
+import {
+  saveOutline, trashOutline, downloadOutline, cloudUploadOutline,
+  addCircleOutline, removeCircleOutline
+} from 'ionicons/icons';
 import { usePatrimonio } from '../composables/usePatrimonio';
 import { exportarBackup, importarBackup } from '../services/storageService';
-import { formatCurrency, labelMes } from '../types';
+import { formatCurrency } from '../types';
 
-const { config, registros, patrimonioAtualGeral, saveConfig, resetarDados, recarregarDados } = usePatrimonio();
+const { config, patrimonioAtualGeral, saveConfig, resetarDados, recarregarDados } = usePatrimonio();
+
+/** Injetado pelo Vite a partir do package.json — mesma fonte que o versionName do Android. */
+const APP_VERSION = __APP_VERSION__;
+
+const reservaMeses = computed(() => config.value.reservaAlvoMeses);
+
+function ajustarReserva(delta: number) {
+  const novo = Math.min(60, Math.max(1, reservaMeses.value + delta));
+  saveConfig({ reservaAlvoMeses: novo });
+}
 
 const patrimonioStr = ref(String(config.value.patrimonioInicial));
 const salvando = ref(false);
@@ -297,19 +317,11 @@ const botoesAlertReset = [
 .pp-valor.vermelho { color: #EF4444; }
 
 /* Stats list */
-.stats-list {
-  background: #161B22; border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.06); overflow: hidden;
-}
-.stat-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.04);
-}
-.stat-row:last-child { border-bottom: none; }
-.sr-label { font-size: 0.82rem; color: #9CA3AF; }
-.sr-valor { font-size: 0.85rem; font-weight: 700; color: #F0F6FC; }
-.sr-valor.verde { color: #10B981; }
-.sr-valor.vermelho { color: #EF4444; }
+/* Reserva desejada */
+.reserva-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.reserva-valor { display: flex; align-items: baseline; gap: 6px; min-width: 120px; justify-content: center; }
+.rv-num { font-size: 2rem; font-weight: 800; color: #10B981; letter-spacing: -0.02em; }
+.rv-unidade { font-size: 0.85rem; color: #9CA3AF; font-weight: 600; }
 
 /* Botões backup */
 .btn-backup { margin-bottom: 10px; }
