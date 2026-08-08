@@ -34,7 +34,15 @@ O `package.json` é a fonte única da versão: `android/app/build.gradle` deriva
 `versionName` quanto o `versionCode` (`major*10000 + minor*100 + patch`), e o Vite injeta
 `__APP_VERSION__` para a tela de Configurações. Nunca escreva a versão à mão em outro lugar.
 
-O CI **não** roda lint nem testes — rode-os localmente antes de taguear.
+Há dois workflows, com gatilhos distintos:
+
+| Workflow | Dispara em | Faz |
+|---|---|---|
+| `ci.yml` | push em `main` | `npm run lint`, `npx vitest run`, `npm run build` |
+| `build-release.yml` | tags `v*` | compila o APK assinado e publica o Release |
+
+O build de release **não** roda lint nem testes — quem cobre isso é o `ci.yml` em `main`.
+Ao taguear a partir de um commit já verde em `main`, o código já passou pela verificação.
 
 ## Arquitetura
 

@@ -4,6 +4,7 @@
 
 **Acompanhe a evolução do seu patrimônio com dois números por mês.**
 
+[![CI](https://img.shields.io/github/actions/workflow/status/barbieri97/cofre/ci.yml?branch=main&style=flat-square&label=ci)](https://github.com/barbieri97/cofre/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/barbieri97/cofre?style=flat-square&color=10B981)](https://github.com/barbieri97/cofre/releases/latest)
 [![Data do release](https://img.shields.io/github/release-date/barbieri97/cofre?style=flat-square&color=F59E0B&label=atualizado)](https://github.com/barbieri97/cofre/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/barbieri97/cofre/total?style=flat-square&color=8B5CF6)](https://github.com/barbieri97/cofre/releases)
@@ -102,10 +103,11 @@ cd android && ./gradlew assembleRelease
 Detalhes de arquitetura e as armadilhas que valem conhecer estão em
 [`CLAUDE.md`](CLAUDE.md).
 
-### Releases
+### CI e releases
 
-`npm version <patch|minor|major>` cria o commit e a tag. O push da tag dispara o workflow que
-compila o APK assinado e publica o release.
+Todo push em `main` roda lint, testes e build. Releases saem de tags: `npm version
+<patch|minor|major>` cria o commit e a tag, e o push da tag dispara o workflow que compila o
+APK assinado e publica o release.
 
 ## Stack
 

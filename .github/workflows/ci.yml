@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: ['main']
+  workflow_dispatch:
+
+jobs:
+  verificar:
+    name: Lint, testes e build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # `npm run test:unit` abre o vitest em modo watch e travaria o runner.
+      - name: Testes unitários
+        run: npx vitest run
+
+      # Roda vue-tsc antes do vite build, então também serve de typecheck.
+      - name: Build
+        run: npm run build
