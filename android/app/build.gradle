@@ -1,4 +1,11 @@
+import groovy.json.JsonSlurper
+
 apply plugin: 'com.android.application'
+
+// A versão do app vem do package.json, que é atualizado por `npm version`.
+def appVersionName = new JsonSlurper().parse(file('../../package.json')).version
+def (vMajor, vMinor, vPatch) = appVersionName.split('-')[0].tokenize('.').collect { it.toInteger() }
+def appVersionCode = vMajor * 10000 + vMinor * 100 + vPatch
 
 android {
     namespace = "io.ionic.starter"
@@ -7,8 +14,8 @@ android {
         applicationId "io.ionic.starter"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
