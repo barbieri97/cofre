@@ -14,84 +14,7 @@
 
       <!-- Painel de Filtro -->
       <transition name="slide-filtro">
-        <ion-toolbar v-if="mostrarFiltro" class="filtro-toolbar">
-          <div class="filtro-panel">
-            <!-- Seletor de tipo de visão -->
-            <div class="visao-selector">
-              <button
-                :class="['visao-btn', tipoFiltro === 'meses' && 'ativo']"
-                @click="tipoFiltro = 'meses'"
-              >📅 Meses</button>
-              <button
-                :class="['visao-btn', tipoFiltro === 'anos' && 'ativo']"
-                @click="tipoFiltro = 'anos'"
-              >📆 Ano</button>
-            </div>
-
-            <!-- Filtro por meses -->
-            <div v-if="tipoFiltro === 'meses'" class="filtro-row">
-              <div class="filtro-group">
-                <label>De</label>
-                <div class="filtro-selects">
-                  <ion-select
-                    v-model="filtroLocal.mesInicio"
-                    interface="action-sheet"
-                    :interface-options="{ header: 'Mês inicial' }"
-                    @ion-change="aplicarFiltro"
-                  >
-                    <ion-select-option v-for="(m, i) in MESES_ABREV" :key="i" :value="i + 1">{{ m }}</ion-select-option>
-                  </ion-select>
-                  <ion-select
-                    v-model="filtroLocal.anoInicio"
-                    interface="action-sheet"
-                    :interface-options="{ header: 'Ano inicial' }"
-                    @ion-change="aplicarFiltro"
-                  >
-                    <ion-select-option v-for="a in anos" :key="a" :value="a">{{ a }}</ion-select-option>
-                  </ion-select>
-                </div>
-              </div>
-              <div class="filtro-group">
-                <label>Até</label>
-                <div class="filtro-selects">
-                  <ion-select
-                    v-model="filtroLocal.mesFim"
-                    interface="action-sheet"
-                    :interface-options="{ header: 'Mês final' }"
-                    @ion-change="aplicarFiltro"
-                  >
-                    <ion-select-option v-for="(m, i) in MESES_ABREV" :key="i" :value="i + 1">{{ m }}</ion-select-option>
-                  </ion-select>
-                  <ion-select
-                    v-model="filtroLocal.anoFim"
-                    interface="action-sheet"
-                    :interface-options="{ header: 'Ano final' }"
-                    @ion-change="aplicarFiltro"
-                  >
-                    <ion-select-option v-for="a in anos" :key="a" :value="a">{{ a }}</ion-select-option>
-                  </ion-select>
-                </div>
-              </div>
-            </div>
-
-            <!-- Filtro por ano -->
-            <div v-else class="filtro-ano-wrap">
-              <ion-select
-                v-model="anoSelecionado"
-                interface="action-sheet"
-                :interface-options="{ header: 'Selecione o ano' }"
-                @ion-change="aplicarFiltroAno"
-                class="select-ano-unico"
-              >
-                <ion-select-option v-for="a in anos" :key="a" :value="a">{{ a }}</ion-select-option>
-              </ion-select>
-            </div>
-
-            <ion-button fill="clear" size="small" color="medium" @click="limparFiltro" class="btn-limpar">
-              Limpar filtro
-            </ion-button>
-          </div>
-        </ion-toolbar>
+        <FiltroPeriodoPanel v-if="mostrarFiltro" />
       </transition>
     </ion-header>
 
@@ -113,9 +36,7 @@
         <div class="patrimonio-hero">
           <div class="ph-top">
             <p class="ph-label">Patrimônio Líquido</p>
-            <p class="ph-periodo">
-              {{ labelMes(filtro.mesInicio, filtro.anoInicio) }} → {{ labelMes(filtro.mesFim, filtro.anoFim) }}
-            </p>
+            <p class="ph-periodo">{{ rotuloPeriodo }}</p>
           </div>
           <h1 class="ph-valor">{{ formatCurrency(estatisticas.patrimonioAtual) }}</h1>
 
@@ -134,30 +55,30 @@
           <div class="ph-deco2" />
         </div>
 
-        <!-- ── Cards do mês atual ─────────────────────────── -->
-        <div v-if="temUltimoMes" class="secao">
-          <p class="secao-titulo">Último mês registrado</p>
+        <!-- ── Cards do último período ────────────────────── -->
+        <div v-if="temUltimoPeriodo" class="secao">
+          <p class="secao-titulo">Último {{ unidadePeriodo }} registrado</p>
           <div class="cards-grid-2">
 
-            <!-- Crescimento vs mês anterior -->
-            <div class="kpi-card" :class="estatisticas.crescimentoUltimoMes >= 0 ? 'kpi-verde' : 'kpi-vermelho'">
+            <!-- Crescimento vs período anterior -->
+            <div class="kpi-card" :class="estatisticas.crescimentoUltimoPeriodo >= 0 ? 'kpi-verde' : 'kpi-vermelho'">
               <div class="kpi-top">
-                <ion-icon :icon="estatisticas.crescimentoUltimoMes >= 0 ? trendingUpOutline : trendingDownOutline" class="kpi-icon" />
+                <ion-icon :icon="estatisticas.crescimentoUltimoPeriodo >= 0 ? trendingUpOutline : trendingDownOutline" class="kpi-icon" />
                 <span class="kpi-label">Crescimento Patrim.</span>
               </div>
               <p class="kpi-valor">
-                {{ estatisticas.crescimentoUltimoMes >= 0 ? '+' : '' }}{{ formatCurrency(estatisticas.crescimentoUltimoMes) }}
+                {{ estatisticas.crescimentoUltimoPeriodo >= 0 ? '+' : '' }}{{ formatCurrency(estatisticas.crescimentoUltimoPeriodo) }}
               </p>
-              <p class="kpi-sub">{{ formatPercent(estatisticas.crescimentoPercUltimoMes) }} vs mês ant.</p>
+              <p class="kpi-sub">{{ formatPercent(estatisticas.crescimentoPercUltimoPeriodo) }} vs {{ unidadePeriodo }} ant.</p>
             </div>
 
             <!-- Taxa de poupança -->
-            <div class="kpi-card" :class="estatisticas.taxaPoupancaUltimoMes >= 20 ? 'kpi-verde' : estatisticas.taxaPoupancaUltimoMes >= 0 ? 'kpi-ouro' : 'kpi-vermelho'">
+            <div class="kpi-card" :class="estatisticas.taxaPoupancaUltimoPeriodo >= 20 ? 'kpi-verde' : estatisticas.taxaPoupancaUltimoPeriodo >= 0 ? 'kpi-ouro' : 'kpi-vermelho'">
               <div class="kpi-top">
                 <ion-icon :icon="saveOutline" class="kpi-icon" />
                 <span class="kpi-label">Taxa de Poupança</span>
               </div>
-              <p class="kpi-valor">{{ formatPercent(estatisticas.taxaPoupancaUltimoMes) }}</p>
+              <p class="kpi-valor">{{ formatPercent(estatisticas.taxaPoupancaUltimoPeriodo) }}</p>
               <p class="kpi-sub">do que entrou foi poupado</p>
             </div>
           </div>
@@ -168,22 +89,22 @@
               <ion-icon :icon="arrowUpOutline" class="mc-icon" />
               <div>
                 <p class="mc-label">Receita</p>
-                <p class="mc-valor">{{ formatCurrency(estatisticas.ganhosUltimoMes) }}</p>
+                <p class="mc-valor">{{ formatCurrency(estatisticas.ganhosUltimoPeriodo) }}</p>
               </div>
             </div>
             <div class="mini-card vermelho">
               <ion-icon :icon="arrowDownOutline" class="mc-icon" />
               <div>
                 <p class="mc-label">Despesa</p>
-                <p class="mc-valor">{{ formatCurrency(estatisticas.gastosUltimoMes) }}</p>
+                <p class="mc-valor">{{ formatCurrency(estatisticas.gastosUltimoPeriodo) }}</p>
               </div>
             </div>
-            <div class="mini-card" :class="estatisticas.saldoUltimoMes >= 0 ? 'roxo' : 'vermelho-escuro'">
+            <div class="mini-card" :class="estatisticas.saldoUltimoPeriodo >= 0 ? 'roxo' : 'vermelho-escuro'">
               <ion-icon :icon="walletOutline" class="mc-icon" />
               <div>
                 <p class="mc-label">Saldo</p>
-                <p class="mc-valor" :class="estatisticas.saldoUltimoMes >= 0 ? 'verde-txt' : 'vermelho-txt'">
-                  {{ formatCurrency(estatisticas.saldoUltimoMes) }}
+                <p class="mc-valor" :class="estatisticas.saldoUltimoPeriodo >= 0 ? 'verde-txt' : 'vermelho-txt'">
+                  {{ formatCurrency(estatisticas.saldoUltimoPeriodo) }}
                 </p>
               </div>
             </div>
@@ -277,10 +198,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
-  IonButtons, IonButton, IonIcon, IonSelect, IonSelectOption
+  IonButtons, IonButton, IonIcon
 } from '@ionic/vue';
 import {
   filterOutline, closeOutline, trendingUpOutline, trendingDownOutline,
@@ -289,93 +210,30 @@ import {
 } from 'ionicons/icons';
 import { usePatrimonio } from '../composables/usePatrimonio';
 import GraficoCanvas from '../components/GraficoCanvas.vue';
-import { MESES_ABREV, formatCurrency, formatPercent, labelMes } from '../types';
+import FiltroPeriodoPanel from '../components/FiltroPeriodoPanel.vue';
+import { MESES_ABREV, formatCurrency, formatPercent, labelMes, labelAno } from '../types';
 
-const { config, filtro, registrosFiltrados, estatisticas, pontosGrafico, setFiltro, resetarFiltro } = usePatrimonio();
+const { config, filtro, registrosFiltrados, estatisticas, pontosGrafico } = usePatrimonio();
 
 const mostrarFiltro = ref(false);
-const tipoFiltro = ref<'meses' | 'anos'>('meses');
-const filtroLocal = ref({ ...filtro.value });
-const anoSelecionado = ref(new Date().getFullYear());
 
-watch(filtro, (novo) => { filtroLocal.value = { ...novo }; }, { deep: true });
+const unidadePeriodo = computed(() => filtro.value.tipo === 'anos' ? 'ano' : 'mês');
 
-const anos = computed(() => {
-  const a = new Date().getFullYear();
-  return Array.from({ length: 12 }, (_, i) => a - 8 + i);
-});
+const rotuloPeriodo = computed(() =>
+  filtro.value.tipo === 'anos'
+    ? `${labelAno(filtro.value.anoInicio)} → ${labelAno(filtro.value.anoFim)}`
+    : `${labelMes(filtro.value.mesInicio, filtro.value.anoInicio)} → ${labelMes(filtro.value.mesFim, filtro.value.anoFim)}`
+);
 
-const temUltimoMes = computed(() => pontosGrafico.value.length > 0);
+const temUltimoPeriodo = computed(() => pontosGrafico.value.length > 0);
 
 const ultimosRegistros = computed(() =>
   [...registrosFiltrados.value].slice(-4).reverse()
 );
-
-function aplicarFiltro() {
-  setFiltro({ ...filtroLocal.value });
-}
-
-function aplicarFiltroAno() {
-  setFiltro({
-    mesInicio: 1,
-    anoInicio: anoSelecionado.value,
-    mesFim: 12,
-    anoFim: anoSelecionado.value,
-  });
-  filtroLocal.value = {
-    mesInicio: 1,
-    anoInicio: anoSelecionado.value,
-    mesFim: 12,
-    anoFim: anoSelecionado.value,
-  };
-}
-
-function limparFiltro() {
-  resetarFiltro();
-  filtroLocal.value = { ...filtro.value };
-  anoSelecionado.value = new Date().getFullYear();
-}
 </script>
 
 <style scoped>
 .logo-text { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.02em; }
-
-/* Filtro */
-.filtro-toolbar { --background: #0D1117; --border-color: rgba(255,255,255,0.07); }
-.filtro-panel { padding: 12px 16px 10px; }
-
-.visao-selector {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-  background: #161B22;
-  padding: 4px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.06);
-}
-.visao-btn {
-  flex: 1; padding: 8px; border-radius: 7px; background: transparent; border: none;
-  color: #9CA3AF; font-size: 0.82rem; font-weight: 600; cursor: pointer;
-  transition: all 0.2s; font-family: inherit;
-}
-.visao-btn.ativo { background: #10B981; color: #fff; }
-
-.filtro-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.filtro-group > label {
-  font-size: 0.68rem; color: #9CA3AF; text-transform: uppercase;
-  letter-spacing: 0.06em; display: block; margin-bottom: 6px;
-}
-.filtro-selects { display: flex; gap: 6px; }
-.filtro-selects ion-select {
-  flex: 1; font-size: 0.82rem; padding: 8px 10px;
-  background: #21262D; border-radius: 8px; border: 1px solid rgba(255,255,255,0.07);
-}
-.filtro-ano-wrap { margin-bottom: 4px; }
-.select-ano-unico {
-  width: 100%; font-size: 0.9rem; padding: 10px 14px;
-  background: #21262D; border-radius: 10px; border: 1px solid rgba(255,255,255,0.07);
-}
-.btn-limpar { margin-top: 8px; }
 
 /* Boas-vindas */
 .boas-vindas { padding: 60px 28px; text-align: center; }

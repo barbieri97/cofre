@@ -9,12 +9,16 @@ import type {
   EstatisticasGerais, ProjecaoMeta, MetaPatrimonio,
   FiltroPeriodo, PontoGrafico
 } from '../types';
-import { generateId, labelMes, adicionarMeses } from '../types';
+import { generateId, labelMes, labelAno, adicionarMeses, agruparPorAno } from '../types';
 import * as storage from '../services/storageService';
 
 // ── Estado Global (singleton reativo) ───────────────────────
+// Precisa ficar em escopo de módulo, e não dentro de usePatrimonio(), para
+// que todos os consumidores compartilhem o mesmo estado — inclusive o
+// FiltroPeriodoPanel, que altera o filtro lido pelas páginas.
 const registros = ref<RegistroMensal[]>([]);
 const config = ref<ConfigApp>(storage.getConfig());
+const filtroAtivo = ref<FiltroPeriodo>(gerarFiltroDefault());
 
 let inicializado = false;
 
@@ -63,10 +67,6 @@ export function usePatrimonio() {
     return acumulado;
   }
 
-  // ── Registros sem filtro de período (todos) ───────────────
-  // Usado para seleção de filtro disponível
-  const filtroAtivo = ref<FiltroPeriodo>(gerarFiltroDefault());
-
   // ── Registros filtrados ────────────────────────────────────
   const registrosFiltrados = computed(() =>
     registrosOrdenados.value.filter(r => {
@@ -78,6 +78,29 @@ export function usePatrimonio() {
   );
 
   // ── Pontos para gráficos (período filtrado) ───────────────
+  // Acumula o patrimônio sobre uma lista de baldes já ordenados
+  // cronologicamente. Serve tanto para baldes mensais quanto anuais.
+  function construirPontos(
+    baldes: { label: string; ganhos: number; gastos: number }[],
+    patrimonioBase: number
+  ): PontoGrafico[] {
+    let acumulado = patrimonioBase;
+    return baldes.map((b) => {
+      const saldo = b.ganhos - b.gastos;
+      const patrimonioAnterior = acumulado;
+      acumulado += saldo;
+      return {
+        label: b.label,
+        patrimonio: acumulado,
+        ganhos: b.ganhos,
+        gastos: b.gastos,
+        saldo,
+        taxaPoupanca: b.ganhos > 0 ? (saldo / b.ganhos) * 100 : 0,
+        crescimento: acumulado - patrimonioAnterior,
+      };
+    });
+  }
+
   // BUG FIX: usa o patrimônio real no início do período filtrado como base
   const pontosGrafico = computed<PontoGrafico[]>(() => {
     const regs = registrosFiltrados.value;
@@ -89,23 +112,17 @@ export function usePatrimonio() {
       filtroAtivo.value.anoInicio
     );
 
-    let acumulado = patrimonioBase;
-    return regs.map((r, i) => {
-      const saldo = r.ganhos - r.gastos;
-      const patrimonioAnterior = acumulado;
-      acumulado += saldo;
-      const crescimento = acumulado - patrimonioAnterior;
-      const taxaPoupanca = r.ganhos > 0 ? (saldo / r.ganhos) * 100 : 0;
-      return {
-        label: labelMes(r.mes, r.ano),
-        patrimonio: acumulado,
-        ganhos: r.ganhos,
-        gastos: r.gastos,
-        saldo,
-        taxaPoupanca,
-        crescimento,
-      };
-    });
+    // Visão 'anos': soma os 12 meses de cada ano num único ponto, permitindo
+    // comparar anos entre si. Visão 'meses': um ponto por registro mensal.
+    const baldes = filtroAtivo.value.tipo === 'anos'
+      ? agruparPorAno(regs).map(a => ({
+          label: labelAno(a.ano), ganhos: a.ganhos, gastos: a.gastos,
+        }))
+      : regs.map(r => ({
+          label: labelMes(r.mes, r.ano), ganhos: r.ganhos, gastos: r.gastos,
+        }));
+
+    return construirPontos(baldes, patrimonioBase);
   });
 
   // ── Estatísticas do período filtrado ──────────────────────
@@ -128,17 +145,17 @@ export function usePatrimonio() {
       ? (variacaoTotal / Math.abs(patrimonioBase)) * 100
       : 0;
 
-    // Dados do mês mais recente no filtro
+    // Dados do período mais recente no filtro (último mês ou último ano)
     const ultimoPonto = pontos.at(-1);
     const penultimoPonto = pontos.at(-2);
-    const ganhosUltimoMes = ultimoPonto?.ganhos ?? 0;
-    const gastosUltimoMes = ultimoPonto?.gastos ?? 0;
-    const saldoUltimoMes = ultimoPonto?.saldo ?? 0;
-    const taxaPoupancaUltimoMes = ultimoPonto?.taxaPoupanca ?? 0;
-    const crescimentoUltimoMes = ultimoPonto?.crescimento ?? 0;
+    const ganhosUltimoPeriodo = ultimoPonto?.ganhos ?? 0;
+    const gastosUltimoPeriodo = ultimoPonto?.gastos ?? 0;
+    const saldoUltimoPeriodo = ultimoPonto?.saldo ?? 0;
+    const taxaPoupancaUltimoPeriodo = ultimoPonto?.taxaPoupanca ?? 0;
+    const crescimentoUltimoPeriodo = ultimoPonto?.crescimento ?? 0;
     const patrimonioAnteriorUltimo = penultimoPonto?.patrimonio ?? patrimonioBase;
-    const crescimentoPercUltimoMes = patrimonioAnteriorUltimo !== 0
-      ? (crescimentoUltimoMes / Math.abs(patrimonioAnteriorUltimo)) * 100
+    const crescimentoPercUltimoPeriodo = patrimonioAnteriorUltimo !== 0
+      ? (crescimentoUltimoPeriodo / Math.abs(patrimonioAnteriorUltimo)) * 100
       : 0;
 
     return {
@@ -150,12 +167,12 @@ export function usePatrimonio() {
       patrimonioBase,
       variacaoTotal,
       variacaoPercentual,
-      ganhosUltimoMes,
-      gastosUltimoMes,
-      saldoUltimoMes,
-      taxaPoupancaUltimoMes,
-      crescimentoUltimoMes,
-      crescimentoPercUltimoMes,
+      ganhosUltimoPeriodo,
+      gastosUltimoPeriodo,
+      saldoUltimoPeriodo,
+      taxaPoupancaUltimoPeriodo,
+      crescimentoUltimoPeriodo,
+      crescimentoPercUltimoPeriodo,
     };
   });
 
@@ -365,7 +382,7 @@ export function usePatrimonio() {
   // ── Filtro ────────────────────────────────────────────────
 
   function setFiltro(novoFiltro: Partial<FiltroPeriodo>) {
-    filtroAtivo.value = { ...filtroAtivo.value, ...novoFiltro };
+    filtroAtivo.value = normalizarFiltro({ ...filtroAtivo.value, ...novoFiltro });
   }
 
   function resetarFiltro() {
@@ -416,12 +433,41 @@ function gerarFiltroDefault(): FiltroPeriodo {
   const anoAtual = hoje.getFullYear();
   const mesAtual = hoje.getMonth() + 1;
   // Últimos 12 meses por padrão
-  const anoInicio = mesAtual === 12 ? anoAtual - 1 : anoAtual - 1;
   const mesInicio = mesAtual === 12 ? 12 : mesAtual + 1;
   return {
     mesInicio: mesInicio > 12 ? 1 : mesInicio,
-    anoInicio: anoInicio,
+    anoInicio: anoAtual - 1,
     mesFim: mesAtual,
     anoFim: anoAtual,
+    tipo: 'meses',
+  };
+}
+
+/**
+ * Garante que o início do período não seja posterior ao fim. Com seletores
+ * independentes é fácil inverter as pontas, o que sem isso resultaria numa
+ * tela vazia sem explicação.
+ */
+function normalizarFiltro(f: FiltroPeriodo): FiltroPeriodo {
+  // Na visão de anos a janela cobre sempre Jan→Dez: só os anos podem inverter,
+  // e os meses são forçados para não sobrar resíduo da visão de meses.
+  if (f.tipo === 'anos') {
+    const inverter = f.anoInicio > f.anoFim;
+    return {
+      ...f,
+      mesInicio: 1,
+      anoInicio: inverter ? f.anoFim : f.anoInicio,
+      mesFim: 12,
+      anoFim: inverter ? f.anoInicio : f.anoFim,
+    };
+  }
+
+  if (f.anoInicio * 100 + f.mesInicio <= f.anoFim * 100 + f.mesFim) return f;
+  return {
+    ...f,
+    mesInicio: f.mesFim,
+    anoInicio: f.anoFim,
+    mesFim: f.mesInicio,
+    anoFim: f.anoInicio,
   };
 }

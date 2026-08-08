@@ -40,25 +40,28 @@ export interface EstatisticasPeriodo {
   patrimonioBase: number;  // patrimônio no início do período filtrado
   variacaoTotal: number;   // patrimonioAtual - patrimonioBase
   variacaoPercentual: number;
-  // Dados do mês mais recente filtrado
-  ganhosUltimoMes: number;
-  gastosUltimoMes: number;
-  saldoUltimoMes: number;
-  taxaPoupancaUltimoMes: number;
-  crescimentoUltimoMes: number;       // variação patrimonial absoluta
-  crescimentoPercUltimoMes: number;   // variação patrimonial %
+  // Dados do último período filtrado (último mês ou último ano, conforme filtro.tipo)
+  ganhosUltimoPeriodo: number;
+  gastosUltimoPeriodo: number;
+  saldoUltimoPeriodo: number;
+  taxaPoupancaUltimoPeriodo: number;
+  crescimentoUltimoPeriodo: number;       // variação patrimonial absoluta
+  crescimentoPercUltimoPeriodo: number;   // variação patrimonial %
 }
 
 /** Ponto de dado para gráficos */
 export interface PontoGrafico {
-  label: string;              // ex: 'Jan/24'
+  label: string;              // ex: 'Jan/24' (visão meses) ou '2024' (visão anos)
   patrimonio: number;         // patrimônio acumulado
   ganhos: number;
   gastos: number;
   saldo: number;
   taxaPoupanca: number;       // %
-  crescimento: number;        // variação do patrimônio vs mês anterior
+  crescimento: number;        // variação do patrimônio vs período anterior
 }
+
+/** Tipo de visão do filtro */
+export type TipoFiltro = 'meses' | 'anos';
 
 /** Filtro de período */
 export interface FiltroPeriodo {
@@ -66,10 +69,8 @@ export interface FiltroPeriodo {
   anoInicio: number;
   mesFim: number;
   anoFim: number;
+  tipo: TipoFiltro;   // 'meses' = 1 ponto por mês | 'anos' = 1 ponto por ano
 }
-
-/** Tipo de visão do filtro */
-export type TipoFiltro = 'meses' | 'anos';
 
 /** Estatísticas gerais (baseadas nos últimos 12 meses e em todo o histórico) */
 export interface EstatisticasGerais {
@@ -130,6 +131,34 @@ export function formatPercent(value: number, casas = 1): string {
 /** Label de mês abreviado */
 export function labelMes(mes: number, ano: number): string {
   return `${MESES_ABREV[mes - 1]}/${String(ano).slice(2)}`;
+}
+
+/** Label de ano */
+export function labelAno(ano: number): string {
+  return String(ano);
+}
+
+/** Agregado anual de registros mensais */
+export interface AgregadoAnual {
+  ano: number;
+  ganhos: number;
+  gastos: number;
+}
+
+/**
+ * Agrupa registros mensais por ano, somando ganhos e gastos.
+ * Anos sem nenhum registro simplesmente não aparecem no resultado — não são
+ * emitidos zerados, o que faria o patrimônio parecer despencar naquele ano.
+ */
+export function agruparPorAno(registros: RegistroMensal[]): AgregadoAnual[] {
+  const mapa = new Map<number, AgregadoAnual>();
+  for (const r of registros) {
+    const acc = mapa.get(r.ano) ?? { ano: r.ano, ganhos: 0, gastos: 0 };
+    acc.ganhos += r.ganhos;
+    acc.gastos += r.gastos;
+    mapa.set(r.ano, acc);
+  }
+  return [...mapa.values()].sort((a, b) => a.ano - b.ano);
 }
 
 /** Compara dois meses (retorna negativo, 0 ou positivo) */

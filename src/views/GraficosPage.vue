@@ -11,56 +11,7 @@
       </ion-toolbar>
 
       <transition name="slide-filtro">
-        <ion-toolbar v-if="mostrarFiltro" class="filtro-toolbar">
-          <div class="filtro-panel">
-            <!-- Visão -->
-            <div class="visao-selector">
-              <button :class="['visao-btn', tipoFiltro === 'meses' && 'ativo']" @click="tipoFiltro = 'meses'">📅 Meses</button>
-              <button :class="['visao-btn', tipoFiltro === 'anos' && 'ativo']" @click="tipoFiltro = 'anos'">📆 Ano</button>
-            </div>
-
-            <div v-if="tipoFiltro === 'meses'" class="filtro-row">
-              <div class="filtro-group">
-                <label>De</label>
-                <div class="filtro-selects">
-                  <ion-select v-model="filtroLocal.mesInicio" interface="action-sheet" @ion-change="aplicarFiltro">
-                    <ion-select-option v-for="(m, i) in MESES_ABREV" :key="i" :value="i + 1">{{ m }}</ion-select-option>
-                  </ion-select>
-                  <ion-select v-model="filtroLocal.anoInicio" interface="action-sheet" @ion-change="aplicarFiltro">
-                    <ion-select-option v-for="a in anos" :key="a" :value="a">{{ a }}</ion-select-option>
-                  </ion-select>
-                </div>
-              </div>
-              <div class="filtro-group">
-                <label>Até</label>
-                <div class="filtro-selects">
-                  <ion-select v-model="filtroLocal.mesFim" interface="action-sheet" @ion-change="aplicarFiltro">
-                    <ion-select-option v-for="(m, i) in MESES_ABREV" :key="i" :value="i + 1">{{ m }}</ion-select-option>
-                  </ion-select>
-                  <ion-select v-model="filtroLocal.anoFim" interface="action-sheet" @ion-change="aplicarFiltro">
-                    <ion-select-option v-for="a in anos" :key="a" :value="a">{{ a }}</ion-select-option>
-                  </ion-select>
-                </div>
-              </div>
-            </div>
-
-            <div v-else class="filtro-ano-wrap">
-              <ion-select
-                v-model="anoSelecionado"
-                interface="action-sheet"
-                :interface-options="{ header: 'Selecione o ano' }"
-                @ion-change="aplicarFiltroAno"
-                class="select-ano-unico"
-              >
-                <ion-select-option v-for="a in anos" :key="a" :value="a">{{ a }}</ion-select-option>
-              </ion-select>
-            </div>
-
-            <ion-button fill="clear" size="small" color="medium" @click="limparFiltro" class="btn-limpar">
-              Limpar filtro
-            </ion-button>
-          </div>
-        </ion-toolbar>
+        <FiltroPeriodoPanel v-if="mostrarFiltro" />
       </transition>
     </ion-header>
 
@@ -139,7 +90,7 @@
             <table class="tabela">
               <thead>
                 <tr>
-                  <th>Mês</th>
+                  <th>{{ filtro.tipo === 'anos' ? 'Ano' : 'Mês' }}</th>
                   <th class="num">Receita</th>
                   <th class="num">Despesa</th>
                   <th class="num">Saldo</th>
@@ -176,31 +127,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
-  IonButtons, IonButton, IonIcon, IonSelect, IonSelectOption
+  IonButtons, IonButton, IonIcon
 } from '@ionic/vue';
 import { filterOutline, closeOutline, barChartOutline } from 'ionicons/icons';
 import { usePatrimonio } from '../composables/usePatrimonio';
 import GraficoCanvas from '../components/GraficoCanvas.vue';
 import type { TipoGrafico } from '../components/GraficoCanvas.vue';
-import { MESES_ABREV, formatCurrency, formatPercent } from '../types';
+import FiltroPeriodoPanel from '../components/FiltroPeriodoPanel.vue';
+import { formatCurrency, formatPercent } from '../types';
 
-const { filtro, pontosGrafico, estatisticas, setFiltro, resetarFiltro } = usePatrimonio();
+const { filtro, pontosGrafico, estatisticas } = usePatrimonio();
 
 const mostrarFiltro = ref(false);
-const tipoFiltro = ref<'meses' | 'anos'>('meses');
-const filtroLocal = ref({ ...filtro.value });
-const anoSelecionado = ref(new Date().getFullYear());
 const tipoGrafico = ref<TipoGrafico>('patrimonio');
-
-watch(filtro, n => { filtroLocal.value = { ...n }; }, { deep: true });
-
-const anos = computed(() => {
-  const a = new Date().getFullYear();
-  return Array.from({ length: 12 }, (_, i) => a - 8 + i);
-});
 
 const opcoeGrafico: { tipo: TipoGrafico; label: string; titulo: string }[] = [
   { tipo: 'patrimonio',     label: '💼 Patrimônio',    titulo: 'Evolução do Patrimônio' },
@@ -219,52 +161,9 @@ function formatCurrencyK(v: number): string {
   if (Math.abs(v) >= 1000) return `R$ ${(v / 1000).toFixed(0)}k`;
   return formatCurrency(v);
 }
-
-function aplicarFiltro() { setFiltro({ ...filtroLocal.value }); }
-
-function aplicarFiltroAno() {
-  setFiltro({ mesInicio: 1, anoInicio: anoSelecionado.value, mesFim: 12, anoFim: anoSelecionado.value });
-  filtroLocal.value = { mesInicio: 1, anoInicio: anoSelecionado.value, mesFim: 12, anoFim: anoSelecionado.value };
-}
-
-function limparFiltro() {
-  resetarFiltro();
-  filtroLocal.value = { ...filtro.value };
-  anoSelecionado.value = new Date().getFullYear();
-}
 </script>
 
 <style scoped>
-.filtro-toolbar { --background: #0D1117; --border-color: rgba(255,255,255,0.07); }
-.filtro-panel { padding: 12px 16px 10px; }
-.visao-selector {
-  display: flex; gap: 8px; margin-bottom: 14px;
-  background: #161B22; padding: 4px; border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.06);
-}
-.visao-btn {
-  flex: 1; padding: 8px; border-radius: 7px; background: transparent; border: none;
-  color: #9CA3AF; font-size: 0.82rem; font-weight: 600; cursor: pointer;
-  transition: all 0.2s; font-family: inherit;
-}
-.visao-btn.ativo { background: #10B981; color: #fff; }
-.filtro-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.filtro-group > label {
-  font-size: 0.68rem; color: #9CA3AF; text-transform: uppercase;
-  letter-spacing: 0.06em; display: block; margin-bottom: 6px;
-}
-.filtro-selects { display: flex; gap: 6px; }
-.filtro-selects ion-select {
-  flex: 1; font-size: 0.82rem; padding: 8px 10px;
-  background: #21262D; border-radius: 8px; border: 1px solid rgba(255,255,255,0.07);
-}
-.filtro-ano-wrap { margin-bottom: 4px; }
-.select-ano-unico {
-  width: 100%; font-size: 0.9rem; padding: 10px 14px;
-  background: #21262D; border-radius: 10px; border: 1px solid rgba(255,255,255,0.07);
-}
-.btn-limpar { margin-top: 8px; }
-
 .empty-state {
   height: 65vh; display: flex; flex-direction: column;
   align-items: center; justify-content: center; padding: 32px; text-align: center;
