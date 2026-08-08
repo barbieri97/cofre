@@ -9,6 +9,11 @@
           <ion-button id="btn-filtro-home" fill="clear" @click="mostrarFiltro = !mostrarFiltro">
             <ion-icon :icon="mostrarFiltro ? closeOutline : filterOutline" slot="icon-only" />
           </ion-button>
+          <!-- Única entrada permanente para as Configurações: a aba foi removida
+               na v2 e o botão de boas-vindas só aparece no primeiro uso. -->
+          <ion-button id="btn-config-home" fill="clear" router-link="/tabs/configuracoes">
+            <ion-icon :icon="settingsOutline" slot="icon-only" />
+          </ion-button>
         </ion-buttons>
       </ion-toolbar>
 
@@ -206,7 +211,7 @@ import {
 import {
   filterOutline, closeOutline, trendingUpOutline, trendingDownOutline,
   arrowUpOutline, arrowDownOutline, walletOutline,
-  saveOutline, barChartOutline
+  saveOutline, barChartOutline, settingsOutline
 } from 'ionicons/icons';
 import { usePatrimonio } from '../composables/usePatrimonio';
 import GraficoCanvas from '../components/GraficoCanvas.vue';

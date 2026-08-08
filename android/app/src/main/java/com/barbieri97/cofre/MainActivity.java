@@ -1,4 +1,4 @@
-package io.ionic.starter;
+package com.barbieri97.cofre;
 
 import com.getcapacitor.BridgeActivity;
 

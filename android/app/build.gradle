@@ -8,10 +8,10 @@ def (vMajor, vMinor, vPatch) = appVersionName.split('-')[0].tokenize('.').collec
 def appVersionCode = vMajor * 10000 + vMinor * 100 + vPatch
 
 android {
-    namespace = "io.ionic.starter"
+    namespace = "com.barbieri97.cofre"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "io.ionic.starter"
+        applicationId "com.barbieri97.cofre"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode appVersionCode
