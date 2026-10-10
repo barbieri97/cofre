@@ -4,7 +4,7 @@
       <ion-toolbar>
         <ion-title>Objetivos</ion-title>
         <ion-buttons slot="end">
-          <ion-button id="btn-add-objetivo" fill="clear" @click="abrirNovo">
+          <ion-button id="btn-add-objetivo" fill="clear" color="primary" @click="abrirNovo">
             <ion-icon :icon="addOutline" slot="icon-only" />
           </ion-button>
         </ion-buttons>
@@ -34,13 +34,11 @@
         </div>
 
         <!-- Estado vazio -->
-        <div v-if="!listaVisivel.length" class="sem-objetivo">
-          <ion-icon :icon="flagOutline" class="so-icon" />
-          <p class="so-txt">{{ mensagemVazio }}</p>
-          <ion-button v-if="aba !== 'concluidos'" fill="outline" color="primary" size="small" @click="abrirNovo">
+        <EstadoVazio v-if="!listaVisivel.length" compacto :icone="flagOutline" :texto="mensagemVazio">
+          <ion-button v-if="aba !== 'concluidos'" color="primary" size="small" @click="abrirNovo">
             Criar objetivo
           </ion-button>
-        </div>
+        </EstadoVazio>
 
         <!-- Lista -->
         <ion-list v-else class="obj-list" lines="none">
@@ -174,6 +172,7 @@ import {
 import { addOutline, createOutline, trashOutline, flagOutline } from 'ionicons/icons';
 import { usePatrimonio } from '../composables/usePatrimonio';
 import ObjetivoModal from '../components/ObjetivoModal.vue';
+import EstadoVazio from '../components/EstadoVazio.vue';
 import { formatCurrency, descreverMeses, type Objetivo } from '../types';
 import { mesesDecorridos } from '../domain/objetivos';
 
@@ -269,19 +268,19 @@ function excluirConfirmado() {
 <style scoped>
 .page-content { padding: 16px; padding-bottom: 90px; }
 
-.segment-toolbar { --background: #0D1117; --min-height: 44px; }
+.segment-toolbar { --background: var(--cofre-bg); --min-height: 44px; }
 .obj-segment {
-  --background: rgba(255, 255, 255, 0.04);
-  border-radius: 10px;
+  --background: var(--cofre-overlay);
+  border-radius: var(--cofre-radius-md);
   margin: 0 12px 8px;
 }
 .obj-segment ion-segment-button {
-  --color: #6B7280;
-  --color-checked: #F0F6FC;
-  --indicator-color: rgba(139, 92, 246, 0.25);
-  --border-radius: 8px;
+  --color: var(--cofre-text-subtle);
+  --color-checked: var(--cofre-text);
+  --indicator-color: var(--cofre-accent-border);
+  --border-radius: var(--cofre-radius-sm);
   min-height: 32px;
-  font-size: 0.72rem;
+  font-size: var(--cofre-fs-xs);
   font-weight: 600;
   text-transform: none;
 }
@@ -297,73 +296,66 @@ function excluirConfirmado() {
 
 .obj-card {
   width: 100%;
-  background: #161B22;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--cofre-surface);
+  border-radius: var(--cofre-radius-lg);
+  border: 1px solid var(--cofre-border);
   padding: 16px;
 }
 .obj-card.concluido {
-  border-color: rgba(16, 185, 129, 0.22);
-  background: rgba(16, 185, 129, 0.04);
+  border-color: var(--cofre-green-border);
+  background: var(--cofre-green-subtle);
 }
 
 .oc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .oc-nome-wrap { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.oc-trofeu, .oc-estrela { font-size: 0.9rem; flex-shrink: 0; }
+.oc-trofeu, .oc-estrela { font-size: var(--cofre-fs-md); flex-shrink: 0; }
 .oc-nome {
-  font-size: 0.95rem; font-weight: 700; color: #F0F6FC; margin: 0;
+  font-size: var(--cofre-fs-base); font-weight: 700; color: var(--cofre-text); margin: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.oc-alvo { font-size: 0.9rem; font-weight: 800; color: #8B5CF6; margin: 0; white-space: nowrap; }
-.concluido .oc-alvo { color: #10B981; }
+.oc-alvo { font-size: var(--cofre-fs-md); font-weight: 800; color: var(--cofre-accent); margin: 0; white-space: nowrap; }
+.concluido .oc-alvo { color: var(--cofre-green); }
 
 .oc-bar-track {
-  height: 8px; background: rgba(255, 255, 255, 0.08);
-  border-radius: 8px; overflow: hidden; margin-bottom: 8px;
+  height: 8px; background: var(--cofre-border-strong);
+  border-radius: var(--cofre-radius-sm); overflow: hidden; margin-bottom: 8px;
 }
 .oc-bar-fill {
-  height: 100%; border-radius: 8px;
-  background: linear-gradient(90deg, #8B5CF6, #6366F1);
+  height: 100%; border-radius: var(--cofre-radius-sm);
+  background: var(--cofre-gradient-accent);
   transition: width 0.6s ease;
 }
-.oc-bar-fill.completo { background: linear-gradient(90deg, #10B981, #06D6A0); }
+.oc-bar-fill.completo { background: var(--cofre-gradient-green); }
 
 .oc-percent-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.oc-percent { font-size: 0.8rem; font-weight: 700; color: #8B5CF6; }
-.oc-percent.completo { color: #10B981; }
-.oc-falta { font-size: 0.72rem; color: #9CA3AF; }
+.oc-percent { font-size: var(--cofre-fs-sm); font-weight: 700; color: var(--cofre-accent); }
+.oc-percent.completo { color: var(--cofre-green); }
+.oc-falta { font-size: var(--cofre-fs-xs); color: var(--cofre-text-muted); }
 
 .oc-rodape {
   display: flex; align-items: center; justify-content: space-between;
   gap: 8px; margin-top: 10px; padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--cofre-overlay);
 }
-.oc-info { font-size: 0.72rem; line-height: 1.4; }
-.oc-info.verde { color: #10B981; }
-.oc-info.ouro { color: #F59E0B; }
-.oc-info.vermelho { color: #EF4444; }
+.oc-info { font-size: var(--cofre-fs-xs); line-height: 1.4; }
+.oc-info.verde { color: var(--cofre-green); }
+.oc-info.ouro { color: var(--cofre-gold); }
+.oc-info.vermelho { color: var(--cofre-red); }
 
 .oc-tag {
-  font-size: 0.62rem; font-weight: 700; white-space: nowrap;
-  border-radius: 6px; padding: 3px 7px;
-  background: rgba(255, 255, 255, 0.06); color: #9CA3AF;
+  font-size: var(--cofre-fs-3xs); font-weight: 700; white-space: nowrap;
+  border-radius: var(--cofre-radius-sm); padding: 3px 7px;
+  background: var(--cofre-border); color: var(--cofre-text-muted);
 }
-.oc-tag.tag-ok { background: rgba(16, 185, 129, 0.12); color: #10B981; }
-.oc-tag.tag-alerta { background: rgba(239, 68, 68, 0.12); color: #EF4444; }
+.oc-tag.tag-ok { background: var(--cofre-green-muted); color: var(--cofre-green); }
+.oc-tag.tag-alerta { background: var(--cofre-red-muted); color: var(--cofre-red); }
 
-.oc-perseguindo { font-size: 0.7rem; color: #6B7280; margin: 8px 0 0; }
+.oc-perseguindo { font-size: var(--cofre-fs-2xs); color: var(--cofre-text-subtle); margin: 8px 0 0; }
 
-.sem-objetivo {
-  background: #161B22; border-radius: 14px;
-  border: 1px dashed rgba(255, 255, 255, 0.1);
-  padding: 32px 20px; text-align: center;
-}
-.so-icon { font-size: 2.5rem; color: #374151; display: block; margin: 0 auto 12px; }
-.so-txt { font-size: 0.85rem; color: #6B7280; line-height: 1.6; margin: 0 0 16px; }
 
 .aviso-registros {
-  background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.2);
-  border-radius: 12px; padding: 14px 16px; margin-bottom: 16px;
+  background: var(--cofre-gold-subtle); border: 1px solid var(--cofre-gold-border);
+  border-radius: var(--cofre-radius-md); padding: 14px 16px; margin-bottom: 16px;
 }
-.aviso-registros p { font-size: 0.82rem; color: #F59E0B; margin: 0; }
+.aviso-registros p { font-size: var(--cofre-fs-sm); color: var(--cofre-gold); margin: 0; }
 </style>

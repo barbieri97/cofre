@@ -2,14 +2,18 @@
    Tema Cofre — Paleta Dark Premium
    ============================================================ */
 
+/* A fonte precisa vir antes de qualquer regra: um @import depois
+   delas é ignorado pelo navegador. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 :root {
   /* ── Cores de Marca ───────────────────────────────────── */
-  --ion-color-primary: #10B981;
-  --ion-color-primary-rgb: 16, 185, 129;
+  --ion-color-primary: #8B5CF6;
+  --ion-color-primary-rgb: 139, 92, 246;
   --ion-color-primary-contrast: #ffffff;
   --ion-color-primary-contrast-rgb: 255, 255, 255;
-  --ion-color-primary-shade: #0ea371;
-  --ion-color-primary-tint: #28c090;
+  --ion-color-primary-shade: #7a51d8;
+  --ion-color-primary-tint: #976cf7;
 
   --ion-color-secondary: #6366F1;
   --ion-color-secondary-rgb: 99, 102, 241;
@@ -60,10 +64,10 @@
   --ion-background-color-rgb: 13, 17, 23;
 
   --ion-toolbar-background: #161B22;
-  --ion-tab-bar-background: #161B22;
-  --ion-tab-bar-border-color: rgba(255,255,255,0.06);
-  --ion-tab-bar-color: #6B7280;
-  --ion-tab-bar-color-selected: #10B981;
+  --ion-tab-bar-background: #0D1117;
+  --ion-tab-bar-border-color: rgba(255, 255, 255, 0.06);
+  --ion-tab-bar-color: #4B5563;
+  --ion-tab-bar-color-selected: #8B5CF6;
 
   --ion-item-background: transparent;
   --ion-card-background: #161B22;
@@ -73,32 +77,101 @@
   --ion-text-color: #F0F6FC;
   --ion-text-color-rgb: 240, 246, 252;
 
-  /* ── Custom Design Tokens ─────────────────────────────── */
+  /* ── Tokens do Cofre ──────────────────────────────────────
+     Fonte única de cor, tipografia e raio. Componentes usam
+     var(--cofre-*) em vez de valores soltos; o Figma espelha
+     estes nomes. */
+
+  /* Superfícies */
+  --cofre-bg: #0D1117;
   --cofre-surface: #161B22;
-  --cofre-surface-2: #1C2233;
-  --cofre-surface-3: #21262D;
-  --cofre-border: rgba(255, 255, 255, 0.07);
+  --cofre-surface-2: #21262D;
+
+  /* Texto (do mais forte ao mais apagado) */
+  --cofre-text: #F0F6FC;
+  --cofre-text-soft: #D1D5DB;
+  --cofre-text-muted: #9CA3AF;
+  --cofre-text-subtle: #6B7280;
+  --cofre-text-faint: #4B5563;
+  --cofre-text-disabled: #374151;
+
+  /* Sobre fundos de destaque (hero, botão ativo) */
+  --cofre-on-accent: #FFFFFF;
+  --cofre-on-accent-muted: rgba(255, 255, 255, 0.6);
+  --cofre-on-accent-subtle: rgba(255, 255, 255, 0.4);
+
+  /* Bordas e sobreposições translúcidas */
+  --cofre-overlay: rgba(255, 255, 255, 0.04);
+  --cofre-border: rgba(255, 255, 255, 0.06);
+  --cofre-border-strong: rgba(255, 255, 255, 0.1);
   --cofre-border-hover: rgba(255, 255, 255, 0.15);
 
+  /* Destaque da marca (roxo) — ações, seleção, progresso */
+  --cofre-accent: #8B5CF6;
+  --cofre-accent-2: #6366F1;
+  --cofre-accent-light: #C4B5FD;
+
+  /* Semânticas: receita · despesa · poupança · informação */
   --cofre-green: #10B981;
-  --cofre-green-glow: rgba(16, 185, 129, 0.25);
-  --cofre-green-muted: rgba(16, 185, 129, 0.1);
-
+  --cofre-green-2: #06D6A0;
+  --cofre-green-light: #6EE7B7;
   --cofre-red: #EF4444;
-  --cofre-red-muted: rgba(239, 68, 68, 0.1);
-
-  --cofre-purple: #6366F1;
-  --cofre-purple-muted: rgba(99, 102, 241, 0.1);
-
+  --cofre-red-light: #FCA5A5;
   --cofre-gold: #F59E0B;
-  --cofre-gold-muted: rgba(245, 158, 11, 0.1);
+  --cofre-gold-light: #FCD34D;
+  --cofre-blue: #3B82F6;
 
-  --cofre-radius: 16px;
-  --cofre-radius-sm: 10px;
-  --cofre-radius-lg: 24px;
+  /* Tintas translúcidas — mesma escala para toda cor:
+     -subtle (5%) fundo de card · -muted (12%) chip/realce · -border (25%) contorno */
+  --cofre-accent-subtle: rgba(139, 92, 246, 0.05);
+  --cofre-accent-muted: rgba(139, 92, 246, 0.12);
+  --cofre-accent-border: rgba(139, 92, 246, 0.25);
+  --cofre-green-subtle: rgba(16, 185, 129, 0.05);
+  --cofre-green-muted: rgba(16, 185, 129, 0.12);
+  --cofre-green-border: rgba(16, 185, 129, 0.25);
+  --cofre-red-subtle: rgba(239, 68, 68, 0.05);
+  --cofre-red-muted: rgba(239, 68, 68, 0.12);
+  --cofre-red-border: rgba(239, 68, 68, 0.25);
+  --cofre-gold-subtle: rgba(245, 158, 11, 0.05);
+  --cofre-gold-muted: rgba(245, 158, 11, 0.12);
+  --cofre-gold-border: rgba(245, 158, 11, 0.25);
+  --cofre-blue-subtle: rgba(59, 130, 246, 0.05);
+  --cofre-blue-muted: rgba(59, 130, 246, 0.12);
+  --cofre-blue-border: rgba(59, 130, 246, 0.25);
 
+  /* Gradientes */
+  --cofre-gradient-hero: linear-gradient(135deg, #1A0A3E 0%, #2D1060 50%, #1E3A5F 100%);
+  --cofre-gradient-accent: linear-gradient(90deg, #8B5CF6, #6366F1);
+  --cofre-gradient-green: linear-gradient(90deg, #10B981, #06D6A0);
+
+  /* Sombras */
   --cofre-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --cofre-shadow-glow: 0 0 30px rgba(16, 185, 129, 0.15);
+  --cofre-shadow-accent: 0 12px 40px rgba(139, 92, 246, 0.25);
+
+  /* Escala tipográfica (passos de 1px até 16px) */
+  --cofre-fs-3xs: 0.625rem;   /* 10px */
+  --cofre-fs-2xs: 0.6875rem;  /* 11px */
+  --cofre-fs-xs: 0.75rem;     /* 12px */
+  --cofre-fs-sm: 0.8125rem;   /* 13px */
+  --cofre-fs-md: 0.875rem;    /* 14px */
+  --cofre-fs-base: 1rem;      /* 16px */
+  --cofre-fs-lg: 1.125rem;    /* 18px */
+  --cofre-fs-xl: 1.375rem;    /* 22px */
+  --cofre-fs-2xl: 1.625rem;   /* 26px */
+  --cofre-fs-3xl: 2.25rem;    /* 36px */
+
+  /* Ícones e emojis decorativos */
+  --cofre-icon-md: 2.5rem;
+  --cofre-icon-lg: 3.5rem;
+  --cofre-icon-xl: 4rem;
+
+  /* Raios */
+  --cofre-radius-xs: 4px;
+  --cofre-radius-sm: 8px;
+  --cofre-radius-md: 12px;
+  --cofre-radius-lg: 14px;
+  --cofre-radius-xl: 20px;
+  --cofre-radius-full: 999px;
 }
 
 /* ── Correções globais ───────────────────────────────────── */
@@ -107,29 +180,30 @@
 }
 
 ion-content {
-  --background: #0D1117;
+  --background: var(--cofre-bg);
 }
 
 ion-toolbar {
-  --background: #161B22;
-  --border-color: rgba(255,255,255,0.06);
+  --background: var(--cofre-surface);
+  --border-color: var(--cofre-border);
 }
 
 ion-tab-bar {
-  --background: #161B22;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  --background: var(--cofre-bg);
+  --border-color: var(--cofre-border);
+  border-top: 1px solid var(--cofre-border);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
 ion-tab-button {
-  --color: #6B7280;
-  --color-selected: #10B981;
+  --color: var(--cofre-text-faint);
+  --color-selected: var(--cofre-accent);
 }
 
 ion-card {
-  --background: #161B22;
+  --background: var(--cofre-surface);
   margin: 0;
-  border-radius: var(--cofre-radius);
+  border-radius: var(--cofre-radius-lg);
   border: 1px solid var(--cofre-border);
   box-shadow: var(--cofre-shadow);
 }
@@ -137,38 +211,40 @@ ion-card {
 ion-item {
   --background: transparent;
   --border-color: var(--cofre-border);
-  --color: var(--ion-text-color);
+  --color: var(--cofre-text);
   --padding-start: 0;
   --inner-padding-end: 0;
 }
 
 ion-input {
-  --background: var(--cofre-surface-3);
-  --color: var(--ion-text-color);
-  --placeholder-color: #6B7280;
+  --background: var(--cofre-surface-2);
+  --color: var(--cofre-text);
+  --placeholder-color: var(--cofre-text-subtle);
   --padding-start: 16px !important;
   --padding-end: 16px !important;
   --padding-top: 12px !important;
   --padding-bottom: 12px !important;
-  border-radius: var(--cofre-radius-sm);
+  border-radius: var(--cofre-radius-md);
   border: 1px solid var(--cofre-border);
   margin-top: 4px;
 }
 
 ion-textarea {
-  --background: var(--cofre-surface-3);
-  --color: var(--ion-text-color);
-  --placeholder-color: #6B7280;
+  --background: var(--cofre-surface-2);
+  --color: var(--cofre-text);
+  --placeholder-color: var(--cofre-text-subtle);
   --padding-start: 16px;
   --padding-end: 16px;
-  border-radius: var(--cofre-radius-sm);
+  border-radius: var(--cofre-radius-md);
   border: 1px solid var(--cofre-border);
   margin-top: 4px;
 }
 
-ion-label {
-  color: #9CA3AF !important;
-  font-size: 0.75rem !important;
+/* Só rótulos de campo de formulário. Um seletor global atingia também as abas e os
+   segmentos, anulando o estilo próprio deles (cor do selecionado, caixa, tamanho). */
+.campo-wrap > ion-label {
+  color: var(--cofre-text-muted) !important;
+  font-size: var(--cofre-fs-xs) !important;
   font-weight: 500 !important;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -176,22 +252,22 @@ ion-label {
 }
 
 ion-select {
-  --background: var(--cofre-surface-3);
-  --color: var(--ion-text-color);
-  --placeholder-color: #6B7280;
-  border-radius: var(--cofre-radius-sm);
+  --background: var(--cofre-surface-2);
+  --color: var(--cofre-text);
+  --placeholder-color: var(--cofre-text-subtle);
+  border-radius: var(--cofre-radius-md);
   border: 1px solid var(--cofre-border);
   padding: 12px 16px;
   margin-top: 4px;
 }
 
 ion-fab-button {
-  --background: linear-gradient(135deg, #10B981, #059669);
-  --box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+  --background: linear-gradient(135deg, var(--cofre-accent), var(--cofre-accent-2));
+  --box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
 }
 
 ion-button {
-  --border-radius: var(--cofre-radius-sm);
+  --border-radius: var(--cofre-radius-md);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -201,10 +277,20 @@ ion-title {
   letter-spacing: -0.02em;
 }
 
+/* ── Padrões compartilhados ──────────────────────────────── */
+
+/* Rótulo de seção (eyebrow) — o mesmo em todas as telas e modais. */
+.secao-titulo,
+.campo-titulo {
+  font-size: var(--cofre-fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--cofre-text-muted);
+  margin: 0 0 12px;
+}
+
 /* ── Scroll customizado ──────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--cofre-border-hover); border-radius: 2px; }
-
-/* ── Fonte Google Inter ─────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');

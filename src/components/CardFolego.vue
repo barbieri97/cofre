@@ -112,68 +112,68 @@ const nivel = computed(() => {
 
 <style scoped>
 .folego-card {
-  background: #161B22;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--cofre-surface);
+  border-radius: var(--cofre-radius-lg);
+  border: 1px solid var(--cofre-border);
   padding: 16px;
 }
-.folego-card.confortavel { border-color: rgba(16, 185, 129, 0.28); background: rgba(16, 185, 129, 0.05); }
-.folego-card.atencao { border-color: rgba(245, 158, 11, 0.28); background: rgba(245, 158, 11, 0.05); }
-.folego-card.critico { border-color: rgba(239, 68, 68, 0.28); background: rgba(239, 68, 68, 0.05); }
+.folego-card.confortavel { border-color: var(--cofre-green-border); background: var(--cofre-green-subtle); }
+.folego-card.atencao { border-color: var(--cofre-gold-border); background: var(--cofre-gold-subtle); }
+.folego-card.critico { border-color: var(--cofre-red-border); background: var(--cofre-red-subtle); }
 
-.fc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.fc-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; margin-bottom: 10px; }
 .fc-titulo {
   display: flex; align-items: center; gap: 6px;
-  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.06em; color: #9CA3AF;
+  font-size: var(--cofre-fs-2xs); font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--cofre-text-muted);
 }
-.fc-icone { font-size: 1rem; }
-.confortavel .fc-icone { color: #10B981; }
-.atencao .fc-icone { color: #F59E0B; }
-.critico .fc-icone { color: #EF4444; }
-.neutro .fc-icone { color: #6B7280; }
+.fc-icone { font-size: var(--cofre-fs-base); }
+.confortavel .fc-icone { color: var(--cofre-green); }
+.atencao .fc-icone { color: var(--cofre-gold); }
+.critico .fc-icone { color: var(--cofre-red); }
+.neutro .fc-icone { color: var(--cofre-text-subtle); }
 
 .fc-badge {
-  font-size: 0.6rem; color: #6B7280; white-space: nowrap;
-  background: rgba(255, 255, 255, 0.05); border-radius: 6px; padding: 2px 6px;
+  font-size: var(--cofre-fs-3xs); color: var(--cofre-text-subtle); white-space: nowrap;
+  background: var(--cofre-overlay); border-radius: var(--cofre-radius-sm); padding: 2px 6px;
 }
 
 .fc-valor {
-  font-size: 1.7rem; font-weight: 800; color: #F0F6FC;
+  font-size: var(--cofre-fs-2xl); font-weight: 800; color: var(--cofre-text);
   margin: 0 0 2px; letter-spacing: -0.02em; line-height: 1.1;
 }
-.confortavel .fc-valor { color: #10B981; }
-.atencao .fc-valor { color: #F59E0B; }
-.critico .fc-valor { color: #EF4444; }
-.fc-valor.indefinido { color: #4B5563; }
-.fc-unidade { font-size: 0.9rem; font-weight: 600; opacity: 0.7; }
+.confortavel .fc-valor { color: var(--cofre-green); }
+.atencao .fc-valor { color: var(--cofre-gold); }
+.critico .fc-valor { color: var(--cofre-red); }
+.fc-valor.indefinido { color: var(--cofre-text-faint); }
+.fc-unidade { font-size: var(--cofre-fs-md); font-weight: 600; opacity: 0.7; }
 
-.fc-humano { font-size: 0.72rem; color: #9CA3AF; margin: 0; }
-.fc-sub { font-size: 0.75rem; color: #6B7280; margin: 0; line-height: 1.5; }
+.fc-humano { font-size: var(--cofre-fs-xs); color: var(--cofre-text-muted); margin: 0; }
+.fc-sub { font-size: var(--cofre-fs-xs); color: var(--cofre-text-subtle); margin: 0; line-height: 1.5; }
 
-.fc-contexto { font-size: 0.75rem; color: #9CA3AF; margin: 12px 0 0; line-height: 1.5; }
-.fc-contexto strong { color: #D1D5DB; font-weight: 700; }
+.fc-contexto { font-size: var(--cofre-fs-xs); color: var(--cofre-text-muted); margin: 12px 0 0; line-height: 1.5; }
+.fc-contexto strong { color: var(--cofre-text-soft); font-weight: 700; }
 
 .fc-faixa {
-  font-size: 0.72rem; color: #9CA3AF; margin: 6px 0 0; line-height: 1.5;
+  font-size: var(--cofre-fs-xs); color: var(--cofre-text-muted); margin: 6px 0 0; line-height: 1.5;
 }
-.fc-faixa strong { color: #D1D5DB; font-weight: 700; }
+.fc-faixa strong { color: var(--cofre-text-soft); font-weight: 700; }
 
 .fc-segment {
   margin-top: 14px;
-  --background: rgba(255, 255, 255, 0.04);
-  border-radius: 10px;
+  --background: var(--cofre-overlay);
+  border-radius: var(--cofre-radius-md);
 }
 .fc-segment ion-segment-button {
-  --color: #6B7280;
-  --color-checked: #F0F6FC;
-  --indicator-color: rgba(255, 255, 255, 0.1);
-  --border-radius: 8px;
+  --color: var(--cofre-text-subtle);
+  --color-checked: var(--cofre-text);
+  --indicator-color: var(--cofre-border-strong);
+  --border-radius: var(--cofre-radius-sm);
   min-height: 30px;
-  font-size: 0.7rem;
+  font-size: var(--cofre-fs-2xs);
   font-weight: 600;
   text-transform: none;
 }
 
-.fc-nota { font-size: 0.65rem; color: #4B5563; margin: 10px 0 0; line-height: 1.4; }
+.fc-nota { font-size: var(--cofre-fs-2xs); color: var(--cofre-text-faint); margin: 10px 0 0; line-height: 1.4; }
 </style>

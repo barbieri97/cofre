@@ -185,7 +185,7 @@ const chartOptions = computed(() => ({
       },
     },
     tooltip: {
-      backgroundColor: '#1C2233',
+      backgroundColor: '#21262D',  // = --cofre-surface-2
       titleColor: '#F0F6FC',
       bodyColor: '#D1D5DB',
       borderColor: 'rgba(255,255,255,0.08)',
@@ -255,8 +255,8 @@ const chartOptions = computed(() => ({
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6B7280;
-  font-size: 0.85rem;
+  color: var(--cofre-text-subtle);
+  font-size: var(--cofre-fs-md);
   pointer-events: none;
 }
 </style>

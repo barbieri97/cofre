@@ -119,9 +119,15 @@ Análise › Histórico e a aba Registros usam sempre o histórico inteiro — i
 ### Convenções
 
 - Código, comentários e UI em **português**. Mensagens de commit em português sem acentos.
-- Tema escuro fixo, cores hardcoded nos componentes (`#161B22` surface, `#0D1117` fundo,
-  `#8B5CF6` roxo de destaque, verde/vermelho/ouro para receita/despesa/poupança).
-  `src/theme/variables.css` tem os tokens Ionic, mas os componentes em geral não os usam.
+- Tema escuro fixo. Cor, tamanho de fonte e raio vêm **sempre** de `var(--cofre-*)`, definidos
+  em `src/theme/variables.css` — não escreva hex/rgba/rem soltos em `<style>`. Roxo
+  (`--cofre-accent`, também `--ion-color-primary`) é a cor de ação e seleção; verde, vermelho e
+  ouro são **só** semânticos (receita, despesa, poupança). Toda cor tem tintas
+  `-subtle`/`-muted`/`-border` (5/12/25%). Exceção: `GraficoCanvas.vue` precisa de valores
+  literais no JS do Chart.js — mantenha-os iguais aos tokens.
+- Padrões compartilhados: `.secao-titulo`/`.campo-titulo` são globais (não redefina por tela);
+  estados vazios usam `EstadoVazio.vue` (`compacto` para o card dentro da página), com um único
+  `ion-button color="primary"`.
 - Views e componentes carregam IDs estáveis (`#btn-add-fab`, `#btn-salvar-objetivo`,
   `#input-objetivo-valor`…) pensados para e2e. Mantenha-os ao mexer no markup.
 - `tests/e2e/` ainda é o boilerplate do starter Ionic e não roda no CI.

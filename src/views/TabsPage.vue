@@ -36,18 +36,13 @@ import { homeOutline, listOutline, analyticsOutline, flagOutline } from 'ionicon
 </script>
 
 <style scoped>
-ion-tab-bar {
-  --background: #0D1117;
-  --border-color: rgba(255,255,255,0.07);
-}
+/* Cores da tab bar vêm do tema global (theme/variables.css). */
 ion-tab-button {
-  --color: #4B5563;
-  --color-selected: #8B5CF6;
-  font-size: 0.62rem;
+  font-size: var(--cofre-fs-3xs);
   font-weight: 600;
 }
 ion-tab-button ion-icon {
-  font-size: 1.35rem;
+  font-size: var(--cofre-fs-xl);
   margin-bottom: 2px;
 }
 </style>

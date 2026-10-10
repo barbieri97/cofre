@@ -115,7 +115,7 @@
               id="btn-importar"
               expand="block"
               fill="outline"
-              color="secondary"
+              color="primary"
               @click="triggerImport"
               class="btn-backup"
             >
@@ -283,49 +283,46 @@ const botoesAlertReset = [
 .config-hero {
   text-align: center; padding: 28px 16px 24px; margin-bottom: 8px;
 }
-.ch-icon { font-size: 3rem; margin-bottom: 8px; }
-.ch-nome { font-size: 1.6rem; font-weight: 800; color: #F0F6FC; margin: 0 0 4px; letter-spacing: -0.03em; }
-.ch-sub { font-size: 0.82rem; color: #9CA3AF; margin: 0 0 4px; }
-.ch-versao { font-size: 0.7rem; color: #374151; margin: 0; }
+.ch-icon { font-size: var(--cofre-icon-lg); margin-bottom: 8px; }
+.ch-nome { font-size: var(--cofre-fs-2xl); font-weight: 800; color: var(--cofre-text); margin: 0 0 4px; letter-spacing: -0.03em; }
+.ch-sub { font-size: var(--cofre-fs-sm); color: var(--cofre-text-muted); margin: 0 0 4px; }
+.ch-versao { font-size: var(--cofre-fs-2xs); color: var(--cofre-text-disabled); margin: 0; }
 
 /* Seções */
 .secao { margin-bottom: 28px; }
-.secao-titulo {
-  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.08em; color: #8B5CF6; margin: 0 0 12px;
-}
-.danger-titulo { color: #EF4444; }
+/* .secao-titulo é global (theme/variables.css) */
+.danger-titulo { color: var(--cofre-red); }
 
 /* Campo card */
 .campo-card {
-  background: #161B22; border-radius: 16px;
-  padding: 16px; border: 1px solid rgba(255,255,255,0.06);
+  background: var(--cofre-surface); border-radius: var(--cofre-radius-lg);
+  padding: 16px; border: 1px solid var(--cofre-border);
 }
-.danger-card { border-color: rgba(239,68,68,0.2); }
-.campo-desc { font-size: 0.82rem; color: #9CA3AF; line-height: 1.6; margin: 0 0 16px; }
-.campo-desc strong { color: #F0F6FC; }
+.danger-card { border-color: var(--cofre-red-border); }
+.campo-desc { font-size: var(--cofre-fs-sm); color: var(--cofre-text-muted); line-height: 1.6; margin: 0 0 16px; }
+.campo-desc strong { color: var(--cofre-text); }
 .campo-wrap { margin-bottom: 14px; }
 
 /* Preview */
 .patrimonio-preview {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 14px; background: #21262D; border-radius: 10px; margin-bottom: 16px;
+  padding: 12px 14px; background: var(--cofre-surface-2); border-radius: var(--cofre-radius-md); margin-bottom: 16px;
 }
-.pp-label { font-size: 0.75rem; color: #9CA3AF; }
-.pp-valor { font-size: 1rem; font-weight: 700; }
-.pp-valor.verde { color: #10B981; }
-.pp-valor.vermelho { color: #EF4444; }
+.pp-label { font-size: var(--cofre-fs-xs); color: var(--cofre-text-muted); }
+.pp-valor { font-size: var(--cofre-fs-base); font-weight: 700; }
+.pp-valor.verde { color: var(--cofre-green); }
+.pp-valor.vermelho { color: var(--cofre-red); }
 
 /* Stats list */
 /* Reserva desejada */
 .reserva-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .reserva-valor { display: flex; align-items: baseline; gap: 6px; min-width: 120px; justify-content: center; }
-.rv-num { font-size: 2rem; font-weight: 800; color: #10B981; letter-spacing: -0.02em; }
-.rv-unidade { font-size: 0.85rem; color: #9CA3AF; font-weight: 600; }
+.rv-num { font-size: var(--cofre-fs-3xl); font-weight: 800; color: var(--cofre-accent); letter-spacing: -0.02em; }
+.rv-unidade { font-size: var(--cofre-fs-md); color: var(--cofre-text-muted); font-weight: 600; }
 
 /* Botões backup */
 .btn-backup { margin-bottom: 10px; }
 .btn-backup:last-of-type { margin-bottom: 0; }
 
-.versao { text-align: center; font-size: 0.72rem; color: #374151; margin-top: 24px; }
+.versao { text-align: center; font-size: var(--cofre-fs-xs); color: var(--cofre-text-disabled); margin-top: 24px; }
 </style>

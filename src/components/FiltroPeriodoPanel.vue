@@ -159,34 +159,34 @@ function limparFiltro() {
 </script>
 
 <style scoped>
-.filtro-toolbar { --background: #0D1117; --border-color: rgba(255,255,255,0.07); }
+.filtro-toolbar { --background: var(--cofre-bg); --border-color: var(--cofre-border); }
 .filtro-panel { padding: 12px 16px 10px; }
 
 .visao-selector {
   display: flex;
   gap: 8px;
   margin-bottom: 14px;
-  background: #161B22;
+  background: var(--cofre-surface);
   padding: 4px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--cofre-radius-md);
+  border: 1px solid var(--cofre-border);
 }
 .visao-btn {
-  flex: 1; padding: 8px; border-radius: 7px; background: transparent; border: none;
-  color: #9CA3AF; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  flex: 1; padding: 8px; border-radius: var(--cofre-radius-sm); background: transparent; border: none;
+  color: var(--cofre-text-muted); font-size: var(--cofre-fs-sm); font-weight: 600; cursor: pointer;
   transition: all 0.2s; font-family: inherit;
 }
-.visao-btn.ativo { background: #10B981; color: #fff; }
+.visao-btn.ativo { background: var(--cofre-accent); color: var(--cofre-on-accent); }
 
 .filtro-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .filtro-group > label {
-  font-size: 0.68rem; color: #9CA3AF; text-transform: uppercase;
+  font-size: var(--cofre-fs-2xs); font-weight: 600; color: var(--cofre-text-muted); text-transform: uppercase;
   letter-spacing: 0.06em; display: block; margin-bottom: 6px;
 }
 .filtro-selects { display: flex; gap: 6px; }
 .filtro-selects ion-select {
-  flex: 1; font-size: 0.82rem; padding: 8px 10px;
-  background: #21262D; border-radius: 8px; border: 1px solid rgba(255,255,255,0.07);
+  flex: 1; font-size: var(--cofre-fs-sm); padding: 8px 10px;
+  background: var(--cofre-surface-2); border-radius: var(--cofre-radius-sm); border: 1px solid var(--cofre-border);
 }
 .btn-limpar { margin-top: 8px; }
 </style>
