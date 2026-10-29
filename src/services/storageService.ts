@@ -4,24 +4,31 @@
 // SQLite/IndexedDB basta reimplementar aqui.
 // ============================================================
 
-import type { RegistroMensal, ConfigApp, Objetivo, MetaPatrimonio } from '../types';
+import type {
+  RegistroMensal, ConfigApp, Objetivo, MetaPatrimonio,
+  Categoria, LancamentoMensal, Orcamento,
+} from '../types';
 import { formatCurrency } from '../types';
 
 const KEYS = {
   REGISTROS: 'cofre_registros',
   CONFIG: 'cofre_config',
   OBJETIVOS: 'cofre_objetivos',
+  CATEGORIAS: 'cofre_categorias',
+  LANCAMENTOS: 'cofre_lancamentos',
+  ORCAMENTOS: 'cofre_orcamentos',
   SCHEMA: 'cofre_schema_version',
 } as const;
 
 /** Versão de schema que este código entende. Subir junto com uma migração nova. */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 const CONFIG_PADRAO: ConfigApp = {
   patrimonioInicial: 0,
   primeiroUso: true,
   janelaFolego: 12,
   reservaAlvoMeses: 6,
+  toleranciaDesvio: 5,
 };
 
 // ── Registros ────────────────────────────────────────────────
@@ -87,6 +94,52 @@ export function saveObjetivos(objetivos: Objetivo[]): void {
   } catch (e) {
     console.error('[StorageService] Erro ao salvar objetivos', e);
   }
+}
+
+// ── Categorias, lançamentos e orçamentos ─────────────────────
+
+function lerLista<T>(chave: string, nome: string): T[] {
+  try {
+    const raw = localStorage.getItem(chave);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    console.error(`[StorageService] Erro ao ler ${nome}`);
+    return [];
+  }
+}
+
+function gravarLista<T>(chave: string, nome: string, lista: T[]): void {
+  try {
+    localStorage.setItem(chave, JSON.stringify(lista));
+  } catch (e) {
+    console.error(`[StorageService] Erro ao salvar ${nome}`, e);
+  }
+}
+
+export function getCategorias(): Categoria[] {
+  return lerLista<Categoria>(KEYS.CATEGORIAS, 'categorias');
+}
+
+export function saveCategorias(categorias: Categoria[]): void {
+  gravarLista(KEYS.CATEGORIAS, 'categorias', categorias);
+}
+
+export function getLancamentos(): LancamentoMensal[] {
+  return lerLista<LancamentoMensal>(KEYS.LANCAMENTOS, 'lançamentos');
+}
+
+export function saveLancamentos(lancamentos: LancamentoMensal[]): void {
+  gravarLista(KEYS.LANCAMENTOS, 'lançamentos', lancamentos);
+}
+
+export function getOrcamentos(): Orcamento[] {
+  return lerLista<Orcamento>(KEYS.ORCAMENTOS, 'orçamentos');
+}
+
+export function saveOrcamentos(orcamentos: Orcamento[]): void {
+  gravarLista(KEYS.ORCAMENTOS, 'orçamentos', orcamentos);
 }
 
 // ── Migrações de schema ──────────────────────────────────────
@@ -161,6 +214,16 @@ function migrar2para3(cfg: Record<string, any>): { config: Record<string, any>; 
 }
 
 /**
+ * v3 → v4: entram categorias, lançamentos por categoria e orçamentos. As três
+ * coleções nascem vazias (não há dado antigo a converter); a config ganha a
+ * tolerância de desvio do orçamento.
+ */
+function migrar3para4(cfg: Record<string, any>): Record<string, any> {
+  if (typeof cfg.toleranciaDesvio !== 'number') cfg.toleranciaDesvio = CONFIG_PADRAO.toleranciaDesvio;
+  return cfg;
+}
+
+/**
  * Roda todas as migrações pendentes. Chamado uma única vez em main.ts, antes
  * do mount — nenhum getter grava por conta própria.
  *
@@ -198,6 +261,10 @@ export function migrarSchema(): void {
       saveObjetivos([...existentes, ...objetivos.filter(o => !idsExistentes.has(o.id))]);
       versao = 3;
     }
+    if (versao === 3) {
+      cfg = migrar3para4(cfg);
+      versao = 4;
+    }
 
     localStorage.setItem(KEYS.CONFIG, JSON.stringify(cfg));
     localStorage.setItem(KEYS.SCHEMA, String(SCHEMA_VERSION));
@@ -214,6 +281,9 @@ export interface BackupData {
   config: ConfigApp;
   registros: RegistroMensal[];
   objetivos: Objetivo[];
+  categorias?: Categoria[];
+  lancamentos?: LancamentoMensal[];
+  orcamentos?: Orcamento[];
 }
 
 export function exportarBackup(): string {
@@ -223,6 +293,9 @@ export function exportarBackup(): string {
     config: getConfig(),
     registros: getRegistros(),
     objetivos: getObjetivos(),
+    categorias: getCategorias(),
+    lancamentos: getLancamentos(),
+    orcamentos: getOrcamentos(),
   };
   return JSON.stringify(backup, null, 2);
 }
@@ -240,6 +313,10 @@ export function importarBackup(json: string): { ok: boolean; mensagem: string } 
     saveRegistros(backup.registros);
     localStorage.setItem(KEYS.CONFIG, JSON.stringify(backup.config ?? {}));
     saveObjetivos(Array.isArray(backup.objetivos) ? backup.objetivos : []);
+    // Backups anteriores à v4 não têm estas coleções: entram vazias.
+    saveCategorias(Array.isArray(backup.categorias) ? backup.categorias : []);
+    saveLancamentos(Array.isArray(backup.lancamentos) ? backup.lancamentos : []);
+    saveOrcamentos(Array.isArray(backup.orcamentos) ? backup.orcamentos : []);
 
     const versaoBackup = Number(backup.versao);
     localStorage.setItem(
@@ -260,5 +337,8 @@ export function clearAllData(): void {
   localStorage.removeItem(KEYS.REGISTROS);
   localStorage.removeItem(KEYS.CONFIG);
   localStorage.removeItem(KEYS.OBJETIVOS);
+  localStorage.removeItem(KEYS.CATEGORIAS);
+  localStorage.removeItem(KEYS.LANCAMENTOS);
+  localStorage.removeItem(KEYS.ORCAMENTOS);
   localStorage.removeItem(KEYS.SCHEMA);
 }

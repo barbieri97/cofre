@@ -10,6 +10,11 @@ export interface RegistroMensal {
   ganhos: number;    // Total de entradas no mês
   gastos: number;    // Total de saídas no mês
   descricao?: string; // Observações opcionais
+  /**
+   * 'categorias' = ganhos/gastos derivados dos lançamentos por categoria do mês
+   * (ver src/domain/lancamentos.ts). Ausente = totais digitados à mão.
+   */
+  origem?: 'categorias';
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
@@ -57,6 +62,63 @@ export interface ConfigApp {
   janelaFolego: JanelaFolego;
   /** Reserva desejada, em meses de gasto. Usada só para colorir o card do fôlego. */
   reservaAlvoMeses: number;
+  /** Faixa, em %, em torno do orçado acumulado em que o desvio é neutro. */
+  toleranciaDesvio: number;
+}
+
+// ── Categorias e orçamento ──────────────────────────────────
+
+/**
+ * Tipo de uma categoria. 'transferencia' cobre aportes e investimentos: é
+ * dinheiro que sai do consumo mas continua no patrimônio, por isso não entra
+ * nos gastos do RegistroMensal.
+ */
+export type TipoCategoria = 'receita' | 'despesa' | 'transferencia';
+
+export interface Categoria {
+  id: string;
+  nome: string;
+  tipo: TipoCategoria;
+  grupo?: string;          // texto livre, ex.: 'Moradia'
+  /** false = arquivada. Categorias com dados são arquivadas, nunca apagadas. */
+  ativa: boolean;
+  ordem: number;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+/**
+ * Valor realizado de uma categoria num mês — o total do mês, não uma
+ * transação. Único por (categoriaId, ano, mes). Valor sempre >= 0: o sinal
+ * vem do tipo da categoria.
+ */
+export interface LancamentoMensal {
+  id: string;
+  categoriaId: string;
+  ano: number;
+  mes: number;             // 1–12
+  valor: number;
+  observacao?: string;
+}
+
+export type DistribuicaoOrcamento = 'uniforme' | 'meses' | 'manual';
+
+/**
+ * Orçamento anual de uma categoria. Único por (categoriaId, ano). `meses` é a
+ * distribuição materializada, recalculada a cada save (src/domain/orcamento.ts).
+ */
+export interface Orcamento {
+  id: string;
+  categoriaId: string;
+  ano: number;
+  /** Na distribuição 'manual' é derivado: a soma de `meses`. */
+  valorAnual: number;
+  distribuicao: DistribuicaoOrcamento;
+  /** Meses (1–12) que recebem valor quando distribuicao = 'meses' */
+  mesesEscolhidos?: number[];
+  /** 12 valores, jan → dez */
+  meses: number[];
+  atualizadoEm: string;
 }
 
 /** Estatísticas calculadas para um período filtrado */

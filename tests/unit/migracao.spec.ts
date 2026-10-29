@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   migrarSchema, getConfig, getObjetivos, importarBackup,
   exportarBackup, saveRegistros, SCHEMA_VERSION,
+  getCategorias, getLancamentos, getOrcamentos,
 } from '@/services/storageService';
 
 const REGISTROS = [
@@ -187,5 +188,57 @@ describe('importarBackup', () => {
   it('rejeita arquivo sem registros', () => {
     expect(importarBackup('{"versao":"3"}').ok).toBe(false);
     expect(importarBackup('não é json').ok).toBe(false);
+  });
+});
+
+describe('migrarSchema — v3 → v4 (categorias e orçamento)', () => {
+  it('acrescenta a tolerância de desvio sem mexer no resto, de forma idempotente', () => {
+    localStorage.setItem('cofre_schema_version', '3');
+    localStorage.setItem('cofre_config', JSON.stringify({ patrimonioInicial: 500, primeiroUso: false }));
+    saveRegistros(REGISTROS);
+
+    migrarSchema();
+    migrarSchema();
+
+    const bruto = JSON.parse(localStorage.getItem('cofre_config')!);
+    expect(bruto.toleranciaDesvio).toBe(5);
+    expect(bruto.patrimonioInicial).toBe(500);
+    expect(getCategorias()).toEqual([]);
+    expect(localStorage.getItem('cofre_schema_version')).toBe('4');
+  });
+
+  it('preserva uma tolerância já gravada', () => {
+    localStorage.setItem('cofre_schema_version', '3');
+    localStorage.setItem('cofre_config', JSON.stringify({ patrimonioInicial: 0, toleranciaDesvio: 10 }));
+    migrarSchema();
+    expect(getConfig().toleranciaDesvio).toBe(10);
+  });
+
+  it('backup v3 importa com as coleções novas vazias', () => {
+    localStorage.setItem('cofre_categorias', JSON.stringify([{ id: 'lixo' }]));
+    const r = importarBackup(JSON.stringify({ versao: '3', config: { patrimonioInicial: 1 }, registros: REGISTROS, objetivos: [] }));
+    expect(r.ok).toBe(true);
+    expect(getCategorias()).toEqual([]);
+    expect(getLancamentos()).toEqual([]);
+    expect(getOrcamentos()).toEqual([]);
+  });
+
+  it('round-trip de backup inclui categorias, lançamentos e orçamentos', () => {
+    const categorias = [{ id: 'c1', nome: 'Mercado', tipo: 'despesa', ativa: true, ordem: 0, criadoEm: '', atualizadoEm: '' }];
+    const lancamentos = [{ id: 'l1', categoriaId: 'c1', ano: 2024, mes: 1, valor: 800 }];
+    const orcamentos = [{ id: 'o1', categoriaId: 'c1', ano: 2024, valorAnual: 1200, distribuicao: 'uniforme', meses: new Array(12).fill(100), atualizadoEm: '' }];
+    saveRegistros(REGISTROS);
+    localStorage.setItem('cofre_categorias', JSON.stringify(categorias));
+    localStorage.setItem('cofre_lancamentos', JSON.stringify(lancamentos));
+    localStorage.setItem('cofre_orcamentos', JSON.stringify(orcamentos));
+    localStorage.setItem('cofre_schema_version', String(SCHEMA_VERSION));
+
+    const json = exportarBackup();
+    localStorage.clear();
+    expect(importarBackup(json).ok).toBe(true);
+
+    expect(getCategorias()).toEqual(categorias);
+    expect(getLancamentos()).toEqual(lancamentos);
+    expect(getOrcamentos()).toEqual(orcamentos);
   });
 });
