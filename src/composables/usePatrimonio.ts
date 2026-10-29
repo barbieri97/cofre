@@ -7,7 +7,8 @@ import { ref, computed } from 'vue';
 import type {
   RegistroMensal, ConfigApp, EstatisticasPeriodo,
   EstatisticasGerais, Objetivo, JanelaFolego,
-  FiltroPeriodo, PontoGrafico
+  FiltroPeriodo, PontoGrafico,
+  Categoria, LancamentoMensal, Orcamento,
 } from '../types';
 import { generateId, labelMes, labelAno, agruparPorAno } from '../types';
 import { calcularFolego } from '../domain/runway';
@@ -15,6 +16,17 @@ import {
   derivarConclusao, statusObjetivo, progressoObjetivo, ordenarObjetivos,
 } from '../domain/objetivos';
 import { mesesFaltantes } from '../domain/lacunas';
+import {
+  validarCategoria, categoriaTemDados, reordenar, ordenarCategorias, categoriasDoMes,
+} from '../domain/categorias';
+import {
+  upsertLancamentosMes, lancamentosDoMes as filtrarLancamentosDoMes,
+  totaisDoMes, sincronizarRegistro, type EntradaLancamento,
+} from '../domain/lancamentos';
+import {
+  salvarOrcamento as upsertOrcamento, removerOrcamento as filtrarOrcamento,
+  copiarOrcamentos, visaoAnual, type DadosOrcamento,
+} from '../domain/orcamento';
 import * as storage from '../services/storageService';
 
 // ── Estado Global (singleton reativo) ───────────────────────
@@ -24,6 +36,9 @@ import * as storage from '../services/storageService';
 const registros = ref<RegistroMensal[]>([]);
 const config = ref<ConfigApp>(storage.getConfig());
 const objetivos = ref<Objetivo[]>([]);
+const categorias = ref<Categoria[]>([]);
+const lancamentos = ref<LancamentoMensal[]>([]);
+const orcamentos = ref<Orcamento[]>([]);
 const filtroAtivo = ref<FiltroPeriodo>(gerarFiltroDefault());
 
 let inicializado = false;
@@ -35,6 +50,9 @@ export function usePatrimonio() {
     registros.value = storage.getRegistros();
     config.value = storage.getConfig();
     objetivos.value = storage.getObjetivos();
+    categorias.value = storage.getCategorias();
+    lancamentos.value = storage.getLancamentos();
+    orcamentos.value = storage.getOrcamentos();
     inicializado = true;
   }
 
@@ -337,6 +355,135 @@ export function usePatrimonio() {
     return true;
   }
 
+  // ── Categorias ────────────────────────────────────────────
+
+  const categoriasOrdenadas = computed(() => ordenarCategorias(categorias.value));
+
+  /** Devolve a mensagem de erro, ou null se salvou. */
+  function addCategoria(
+    dados: Pick<Categoria, 'nome' | 'tipo' | 'grupo'>
+  ): string | null {
+    const erro = validarCategoria(dados, categorias.value);
+    if (erro) return erro;
+    const agora = new Date().toISOString();
+    const ordem = Math.max(-1, ...categorias.value.filter(c => c.tipo === dados.tipo).map(c => c.ordem)) + 1;
+    categorias.value = [...categorias.value, {
+      id: generateId(),
+      nome: dados.nome.trim(),
+      tipo: dados.tipo,
+      grupo: dados.grupo?.trim() || undefined,
+      ativa: true,
+      ordem,
+      criadoEm: agora,
+      atualizadoEm: agora,
+    }];
+    _persistCategorias();
+    return null;
+  }
+
+  function updateCategoria(
+    id: string,
+    patch: Partial<Pick<Categoria, 'nome' | 'tipo' | 'grupo' | 'ativa'>>
+  ): string | null {
+    const idx = categorias.value.findIndex(c => c.id === id);
+    if (idx === -1) return 'Categoria não encontrada.';
+    const atual = categorias.value[idx];
+    const proxima = { ...atual, ...patch };
+    const erro = validarCategoria(proxima, categorias.value, id);
+    if (erro) return erro;
+    const lista = [...categorias.value];
+    lista[idx] = {
+      ...proxima,
+      nome: proxima.nome.trim(),
+      grupo: proxima.grupo?.trim() || undefined,
+      atualizadoEm: new Date().toISOString(),
+    };
+    categorias.value = lista;
+    _persistCategorias();
+    // Trocar o tipo muda em que lado do RegistroMensal os lançamentos somam.
+    if (patch.tipo && patch.tipo !== atual.tipo) _ressincronizarMesesDe(id);
+    return null;
+  }
+
+  function temDados(id: string): boolean {
+    return categoriaTemDados(id, lancamentos.value, orcamentos.value);
+  }
+
+  /** Remove só se não houver dados; caso contrário a categoria deve ser arquivada. */
+  function removerCategoria(id: string): boolean {
+    if (temDados(id)) return false;
+    categorias.value = categorias.value.filter(c => c.id !== id);
+    _persistCategorias();
+    return true;
+  }
+
+  function reordenarCategorias(idsNaOrdem: string[]) {
+    categorias.value = reordenar(categorias.value, idsNaOrdem);
+    _persistCategorias();
+  }
+
+  // ── Lançamentos por categoria ─────────────────────────────
+
+  function lancamentosDoMes(ano: number, mes: number): LancamentoMensal[] {
+    return filtrarLancamentosDoMes(lancamentos.value, ano, mes);
+  }
+
+  function categoriasParaLancamento(ano: number, mes: number): Categoria[] {
+    return categoriasDoMes(categorias.value, lancamentos.value, ano, mes);
+  }
+
+  /**
+   * Salva o mês inteiro (upsert em lote) e reflete os totais no
+   * RegistroMensal, que é o que alimenta o patrimônio.
+   */
+  function salvarLancamentosMes(ano: number, mes: number, entradas: EntradaLancamento[]) {
+    lancamentos.value = upsertLancamentosMes(lancamentos.value, ano, mes, entradas);
+    storage.saveLancamentos(lancamentos.value);
+    _sincronizarMes(ano, mes);
+  }
+
+  function _sincronizarMes(ano: number, mes: number) {
+    const temLancamentos = filtrarLancamentosDoMes(lancamentos.value, ano, mes).length > 0;
+    const totais = temLancamentos ? totaisDoMes(lancamentos.value, categorias.value, ano, mes) : null;
+    registros.value = sincronizarRegistro(registros.value, ano, mes, totais);
+    _persist();
+  }
+
+  function _ressincronizarMesesDe(categoriaId: string) {
+    const meses = new Set(
+      lancamentos.value.filter(l => l.categoriaId === categoriaId).map(l => l.ano * 100 + l.mes)
+    );
+    for (const chave of meses) _sincronizarMes(Math.floor(chave / 100), chave % 100);
+  }
+
+  // ── Orçamento ─────────────────────────────────────────────
+
+  function salvarOrcamento(dados: DadosOrcamento) {
+    orcamentos.value = upsertOrcamento(orcamentos.value, dados);
+    storage.saveOrcamentos(orcamentos.value);
+  }
+
+  function removerOrcamento(categoriaId: string, ano: number) {
+    orcamentos.value = filtrarOrcamento(orcamentos.value, categoriaId, ano);
+    storage.saveOrcamentos(orcamentos.value);
+  }
+
+  /** Devolve quantos orçamentos foram copiados. */
+  function copiarOrcamentosDoAno(
+    anoOrigem: number, anoDestino: number, ajustePercentual = 0, sobrescrever = false
+  ): number {
+    const r = copiarOrcamentos(
+      orcamentos.value, categorias.value, anoOrigem, anoDestino, ajustePercentual, sobrescrever
+    );
+    orcamentos.value = r.orcamentos;
+    storage.saveOrcamentos(orcamentos.value);
+    return r.copiados;
+  }
+
+  function visaoAnualDe(ano: number) {
+    return visaoAnual(categorias.value, lancamentos.value, orcamentos.value, ano);
+  }
+
   // ── CRUD ──────────────────────────────────────────────────
 
   /**
@@ -380,6 +527,13 @@ export function usePatrimonio() {
 
   function deleteRegistro(id: string): boolean {
     const antes = registros.value.length;
+    const alvo = registros.value.find(r => r.id === id);
+    // Um mês derivado das categorias leva junto os lançamentos: sem isso o
+    // próximo save de qualquer categoria do mês faria o registro reaparecer.
+    if (alvo?.origem === 'categorias') {
+      lancamentos.value = lancamentos.value.filter(l => !(l.ano === alvo.ano && l.mes === alvo.mes));
+      storage.saveLancamentos(lancamentos.value);
+    }
     registros.value = registros.value.filter(r => r.id !== id);
     _persist();
     return registros.value.length < antes;
@@ -396,6 +550,9 @@ export function usePatrimonio() {
     storage.clearAllData();
     registros.value = [];
     objetivos.value = [];
+    categorias.value = [];
+    lancamentos.value = [];
+    orcamentos.value = [];
     config.value = storage.getConfig();
   }
 
@@ -403,6 +560,9 @@ export function usePatrimonio() {
     registros.value = storage.getRegistros();
     config.value = storage.getConfig();
     objetivos.value = storage.getObjetivos();
+    categorias.value = storage.getCategorias();
+    lancamentos.value = storage.getLancamentos();
+    orcamentos.value = storage.getOrcamentos();
   }
 
   // ── Filtro ────────────────────────────────────────────────
@@ -423,6 +583,10 @@ export function usePatrimonio() {
 
   function _persistObjetivos() {
     storage.saveObjetivos(objetivos.value);
+  }
+
+  function _persistCategorias() {
+    storage.saveCategorias(categorias.value);
   }
 
   return {
@@ -450,6 +614,24 @@ export function usePatrimonio() {
     updateObjetivo,
     deleteObjetivo,
     definirPrincipal,
+    // Categorias
+    categorias: categoriasOrdenadas,
+    addCategoria,
+    updateCategoria,
+    removerCategoria,
+    reordenarCategorias,
+    temDados,
+    // Lançamentos por categoria
+    lancamentos,
+    lancamentosDoMes,
+    categoriasParaLancamento,
+    salvarLancamentosMes,
+    // Orçamento
+    orcamentos,
+    salvarOrcamento,
+    removerOrcamento,
+    copiarOrcamentosDoAno,
+    visaoAnualDe,
     // CRUD
     addRegistro,
     updateRegistro,

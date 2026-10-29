@@ -56,6 +56,55 @@
           </div>
         </div>
 
+        <!-- Categorias e orçamento -->
+        <div class="secao">
+          <p class="secao-titulo">Categorias e Orçamento</p>
+          <div class="campo-card">
+            <p class="campo-desc">
+              Categorias de receita, despesa e transferência usadas no lançamento do mês e no orçamento anual.
+            </p>
+            <ion-button
+              id="btn-gerenciar-categorias"
+              expand="block"
+              fill="outline"
+              color="primary"
+              router-link="/tabs/configuracoes/categorias"
+            >
+              <ion-icon :icon="pricetagsOutline" slot="start" />
+              Gerenciar categorias
+            </ion-button>
+
+            <p class="campo-desc tolerancia-desc">
+              Tolerância de desvio: dentro dessa faixa em torno do orçado acumulado, a visão anual
+              mostra o valor como neutro.
+            </p>
+            <div class="reserva-row">
+              <ion-button
+                id="btn-tolerancia-menos"
+                fill="clear"
+                color="medium"
+                :disabled="toleranciaDesvio <= 0"
+                @click="ajustarTolerancia(-1)"
+              >
+                <ion-icon :icon="removeCircleOutline" slot="icon-only" />
+              </ion-button>
+              <div class="reserva-valor">
+                <span class="rv-num">{{ toleranciaDesvio }}</span>
+                <span class="rv-unidade">%</span>
+              </div>
+              <ion-button
+                id="btn-tolerancia-mais"
+                fill="clear"
+                color="medium"
+                :disabled="toleranciaDesvio >= 50"
+                @click="ajustarTolerancia(1)"
+              >
+                <ion-icon :icon="addCircleOutline" slot="icon-only" />
+              </ion-button>
+            </div>
+          </div>
+        </div>
+
         <!-- Reserva desejada -->
         <div class="secao">
           <p class="secao-titulo">Reserva Desejada</p>
@@ -170,7 +219,7 @@
     <ion-alert
       :is-open="alertResetAberto"
       header="Apagar tudo?"
-      message="Todos os seus registros e configurações serão excluídos permanentemente."
+      message="Todos os seus registros, categorias, orçamentos e configurações serão excluídos permanentemente."
       :buttons="botoesAlertReset"
       @did-dismiss="alertResetAberto = false"
     />
@@ -185,7 +234,7 @@ import {
 } from '@ionic/vue';
 import {
   saveOutline, trashOutline, downloadOutline, cloudUploadOutline,
-  addCircleOutline, removeCircleOutline
+  addCircleOutline, removeCircleOutline, pricetagsOutline
 } from 'ionicons/icons';
 import { usePatrimonio } from '../composables/usePatrimonio';
 import { exportarBackup, importarBackup } from '../services/storageService';
@@ -201,6 +250,12 @@ const reservaMeses = computed(() => config.value.reservaAlvoMeses);
 function ajustarReserva(delta: number) {
   const novo = Math.min(60, Math.max(1, reservaMeses.value + delta));
   saveConfig({ reservaAlvoMeses: novo });
+}
+
+const toleranciaDesvio = computed(() => config.value.toleranciaDesvio);
+
+function ajustarTolerancia(delta: number) {
+  saveConfig({ toleranciaDesvio: Math.min(50, Math.max(0, toleranciaDesvio.value + delta)) });
 }
 
 const patrimonioStr = ref(String(config.value.patrimonioInicial));
@@ -302,6 +357,7 @@ const botoesAlertReset = [
 .campo-desc { font-size: var(--cofre-fs-sm); color: var(--cofre-text-muted); line-height: 1.6; margin: 0 0 16px; }
 .campo-desc strong { color: var(--cofre-text); }
 .campo-wrap { margin-bottom: 14px; }
+.tolerancia-desc { margin: 20px 0 4px; }
 
 /* Preview */
 .patrimonio-preview {

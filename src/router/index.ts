@@ -32,9 +32,24 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('../views/ObjetivosPage.vue'),
       },
       {
+        path: 'orcamento',
+        name: 'Orcamento',
+        component: () => import('../views/OrcamentoPage.vue'),
+      },
+      {
+        path: 'orcamento/lancamento/:ano/:mes',
+        name: 'LancamentoMes',
+        component: () => import('../views/LancamentoMesPage.vue'),
+      },
+      {
         path: 'configuracoes',
         name: 'Configuracoes',
         component: () => import('../views/ConfigPage.vue'),
+      },
+      {
+        path: 'configuracoes/categorias',
+        name: 'Categorias',
+        component: () => import('../views/CategoriasPage.vue'),
       },
       // Rotas da v1: Gráficos e Stats viraram Análise, Metas virou Objetivos.
       // Mantidas como redirect por causa de deep links já existentes.
