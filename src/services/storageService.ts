@@ -9,6 +9,7 @@ import type {
   Categoria, LancamentoMensal, Orcamento,
 } from '../types';
 import { formatCurrency } from '../types';
+import { converterRegistrosManuais, garantirCategoriasOutros } from '../domain/lancamentos';
 
 const KEYS = {
   REGISTROS: 'cofre_registros',
@@ -158,7 +159,9 @@ function novoId(): string {
 function detectarVersao(configBruta: Record<string, unknown> | null): number {
   const gravada = Number(localStorage.getItem(KEYS.SCHEMA));
   if (Number.isFinite(gravada) && gravada > 0) return gravada;
-  if (!configBruta) return SCHEMA_VERSION; // instalação nova: nada a migrar
+  // Sem config nem versão gravada: instalação nova, ou registros antigos de
+  // quem nunca salvou a config — estes ainda precisam virar categorias.
+  if (!configBruta) return localStorage.getItem(KEYS.REGISTROS) !== null ? 3 : SCHEMA_VERSION;
   if (configBruta.metaPatrimonio !== undefined) return 1;
   if (Array.isArray(configBruta.metas)) return 2;
   return 1;
@@ -214,13 +217,25 @@ function migrar2para3(cfg: Record<string, any>): { config: Record<string, any>; 
 }
 
 /**
- * v3 → v4: entram categorias, lançamentos por categoria e orçamentos. As três
- * coleções nascem vazias (não há dado antigo a converter); a config ganha a
- * tolerância de desvio do orçamento.
+ * v3 → v4: entram categorias, lançamentos por categoria e orçamentos. Os
+ * totais mensais digitados à mão viram lançamentos nas categorias "Outros"
+ * (receita e despesa), de modo que todo mês passa a ser derivado de
+ * categorias sem mudar o patrimônio. A config ganha a tolerância de desvio.
  */
 function migrar3para4(cfg: Record<string, any>): Record<string, any> {
   if (typeof cfg.toleranciaDesvio !== 'number') cfg.toleranciaDesvio = CONFIG_PADRAO.toleranciaDesvio;
+  const convertido = converterRegistrosManuais(
+    getRegistros(), getCategorias(), getLancamentos(), new Date().toISOString()
+  );
+  saveCategorias(convertido.categorias);
+  saveLancamentos(convertido.lancamentos);
+  saveRegistros(convertido.registros);
   return cfg;
+}
+
+/** Instalação nova já nasce com as categorias "Outros" do lançamento rápido. */
+function prepararInstalacaoNova(): void {
+  saveCategorias(garantirCategoriasOutros(getCategorias(), new Date().toISOString()).categorias);
 }
 
 /**
@@ -236,6 +251,7 @@ export function migrarSchema(): void {
     const temDados = rawConfig !== null || localStorage.getItem(KEYS.REGISTROS) !== null;
 
     if (!temDados) {
+      prepararInstalacaoNova();
       localStorage.setItem(KEYS.SCHEMA, String(SCHEMA_VERSION));
       return;
     }

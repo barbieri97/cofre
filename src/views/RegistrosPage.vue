@@ -93,7 +93,7 @@
                     <span class="ri-mes-nome">{{ MESES_ABREV[reg.mes - 1] }}</span>
                     <span class="ri-mes-ano">{{ reg.ano }}</span>
                   </div>
-                  <span v-if="reg.origem === 'categorias'" class="ri-origem">
+                  <span v-if="mesEhDetalhado(reg.ano, reg.mes)" class="ri-origem">
                     <ion-icon :icon="pricetagsOutline" /> por categoria
                   </span>
                   <div class="ri-saldo" :class="(reg.ganhos - reg.gastos) >= 0 ? 'positivo' : 'negativo'">
@@ -190,7 +190,9 @@ import EstadoVazio from '../components/EstadoVazio.vue';
 import type { RegistroMensal } from '../types';
 import { MESES_ABREV, formatCurrency } from '../types';
 
-const { registros, lacunas, categorias, addRegistro, updateRegistro, deleteRegistro } = usePatrimonio();
+const {
+  registros, lacunas, categorias, lancarTotaisMes, mesEhDetalhado, deleteRegistro,
+} = usePatrimonio();
 const router = useRouter();
 const hoje = new Date();
 
@@ -208,10 +210,10 @@ function fecharModal() {
   registroEditando.value = null;
 }
 
-/** Um mês lançado por categoria se edita no Lançamento do mês, não no total. */
+/** Um mês detalhado por categoria se edita no Lançamento do mês, não no total. */
 function editarRegistro(reg: RegistroMensal) {
   fecharSliding(reg.id);
-  if (reg.origem === 'categorias') {
+  if (mesEhDetalhado(reg.ano, reg.mes)) {
     router.push(`/tabs/orcamento/lancamento/${reg.ano}/${reg.mes}`);
     return;
   }
@@ -219,11 +221,9 @@ function editarRegistro(reg: RegistroMensal) {
 }
 
 function salvarRegistro(dados: Omit<RegistroMensal, 'id' | 'createdAt' | 'updatedAt'>) {
-  if (registroEditando.value) {
-    updateRegistro(registroEditando.value.id, dados);
-  } else {
-    addRegistro(dados);
-  }
+  // Lançamento rápido: os totais vão para as categorias "Outros" do mês.
+  const anterior = registroEditando.value;
+  lancarTotaisMes(dados, anterior ? { mes: anterior.mes, ano: anterior.ano } : undefined);
   fecharModal();
 }
 
@@ -241,7 +241,7 @@ const mensagemDelete = computed(() => {
   const r = registroParaDeletar.value;
   if (!r) return '';
   const label = `${MESES_ABREV[r.mes - 1]}/${r.ano}`;
-  return r.origem === 'categorias'
+  return mesEhDetalhado(r.ano, r.mes)
     ? `Deseja excluir ${label}? Os lançamentos por categoria deste mês também serão apagados.`
     : `Deseja excluir o registro de ${label}?`;
 });

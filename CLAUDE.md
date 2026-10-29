@@ -50,7 +50,7 @@ App Vue 3 + Ionic empacotado com Capacitor. Sem banco: tudo em `localStorage`.
 
 O propósito define o modelo de dados: os dados são **mensais** — não existem transações
 individuais. `RegistroMensal` (`{mes, ano, ganhos, gastos}`) é o que alimenta patrimônio,
-fôlego e análises. O usuário pode digitar esse total à mão ou lançar o mês **por categoria**:
+fôlego e análises, e é **sempre derivado de lançamentos por categoria** (`origem: 'categorias'`):
 
 - `Categoria` (`receita` | `despesa` | `transferencia`, `grupo` opcional, `ativa`, `ordem`).
   Única por (nome, tipo). Com dados, é arquivada, nunca apagada; arquivada some de lançamentos
@@ -59,6 +59,10 @@ fôlego e análises. O usuário pode digitar esse total à mão ou lançar o mê
   em lote por mês: vazio = sem lançamento, zero = zero lançado (`src/domain/lancamentos.ts`).
   Salvar o mês **reescreve o `RegistroMensal`** com `origem: 'categorias'`: ganhos = Σ receitas,
   gastos = Σ despesas. Transferências (aportes) não entram em gastos — continuam no patrimônio.
+- Duas categorias **"Outros"** (receita e despesa, ids `outros-receita`/`outros-despesa`) existem
+  desde a instalação. O formulário de total da aba Registros é um **lançamento rápido**: grava
+  ganhos e gastos nelas. Um mês com lançamento em qualquer outra categoria é "detalhado" e se
+  edita só no Lançamento do mês.
 - `Orcamento` — anual por (categoria, ano), com `meses[12]` materializado a cada save pelas
   regras `uniforme` | `meses` | `manual`, calculadas em centavos para a soma bater exata
   (`src/domain/orcamento.ts`, que também monta a visão anual e as cores de desvio).
@@ -97,6 +101,10 @@ pura e nunca gravam. Para mudar o formato dos dados:
 1. Suba `SCHEMA_VERSION` em `storageService.ts`.
 2. Adicione uma função `migrarNparaN+1` e encadeie-a em `migrarSchema()`.
 3. Garanta idempotência — há teste para isso em `tests/unit/migracao.spec.ts`.
+
+A v3 → v4 converte cada total manual em lançamentos nas categorias "Outros", copiando os valores
+sem arredondar e fundindo meses duplicados — o patrimônio não muda. Na Visão anual, uma linha sem
+orçamento no ano não é colorida, para o histórico migrado não aparecer todo como desvio.
 
 `importarBackup()` grava o payload cru, marca a versão declarada no arquivo e chama
 `migrarSchema()`, de modo que backups antigos são convertidos ao restaurar.

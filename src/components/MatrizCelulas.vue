@@ -33,14 +33,20 @@ const props = defineProps<{
   tolerancia: number;
 }>();
 
+/**
+ * Sem orçamento no ano não há meta, logo não há desvio: a linha fica sem cor.
+ * Sem isso, o histórico migrado para "Outros" apareceria todo vermelho.
+ */
+const semOrcamento = computed(() => props.linha.anual <= 0);
+
 /** Só colore meses até a referência e com algo lançado: mês vazio não é desvio ainda. */
 function estadoMes(c: CelulaMes): string {
-  if (c.mes > props.mesRef || c.realizado === null) return '';
+  if (semOrcamento.value || c.mes > props.mesRef || c.realizado === null) return '';
   return `est-${estadoDesvio(props.tipo, c.realizado, c.orcado, props.tolerancia)}`;
 }
 
 const estadoAcum = computed(() =>
-  props.mesRef === 0
+  props.mesRef === 0 || semOrcamento.value
     ? ''
     : `est-${estadoDesvio(props.tipo, props.linha.realizadoAcum, props.linha.orcadoAcum, props.tolerancia)}`
 );

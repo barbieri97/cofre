@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { upsertLancamentosMes, totaisDoMes, sincronizarRegistro } from '@/domain/lancamentos';
+import {
+  upsertLancamentosMes, totaisDoMes, sincronizarRegistro, garantirCategoriasOutros, mesDetalhado,
+} from '@/domain/lancamentos';
 import type { Categoria, LancamentoMensal, RegistroMensal } from '@/types';
 
 function cat(id: string, tipo: Categoria['tipo']): Categoria {
@@ -102,5 +104,37 @@ describe('sincronizarRegistro', () => {
       id: 'm', ano: 2025, mes: 3, ganhos: 1, gastos: 1, createdAt: '', updatedAt: '',
     };
     expect(sincronizarRegistro([manual], 2025, 3, null)).toEqual([manual]);
+  });
+});
+
+describe('garantirCategoriasOutros', () => {
+  it('cria as duas no fim de cada tipo', () => {
+    const { categorias, ids } = garantirCategoriasOutros(
+      [{ ...cat('merc', 'despesa'), ordem: 4 }], 'agora'
+    );
+    expect(ids).toEqual({ receita: 'outros-receita', despesa: 'outros-despesa' });
+    expect(categorias.find(c => c.id === 'outros-despesa')!.ordem).toBe(5);
+  });
+
+  it('não duplica e só reativa a arquivada quando pedido', () => {
+    const arquivada = { ...cat('outros-despesa', 'despesa'), nome: 'Outros', ativa: false };
+    const r1 = garantirCategoriasOutros([arquivada], 'agora');
+    expect(r1.categorias.filter(c => c.tipo === 'despesa')).toHaveLength(1);
+    expect(r1.categorias.find(c => c.id === 'outros-despesa')!.ativa).toBe(false);
+    const r2 = garantirCategoriasOutros([arquivada], 'agora', true);
+    expect(r2.categorias.find(c => c.id === 'outros-despesa')!.ativa).toBe(true);
+  });
+});
+
+describe('mesDetalhado', () => {
+  const ids = { receita: 'outros-receita', despesa: 'outros-despesa' };
+  it('mês só com "Outros" não é detalhado; com outra categoria é', () => {
+    const base = upsertLancamentosMes([], 2025, 1, [
+      { categoriaId: ids.receita, valor: 100 }, { categoriaId: ids.despesa, valor: 50 },
+    ]);
+    expect(mesDetalhado(base, ids, 2025, 1)).toBe(false);
+    const detalhado = upsertLancamentosMes(base, 2025, 1, [{ categoriaId: 'alug', valor: 10 }]);
+    expect(mesDetalhado(detalhado, ids, 2025, 1)).toBe(true);
+    expect(mesDetalhado(detalhado, ids, 2025, 2)).toBe(false);
   });
 });

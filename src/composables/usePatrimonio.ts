@@ -21,7 +21,8 @@ import {
 } from '../domain/categorias';
 import {
   upsertLancamentosMes, lancamentosDoMes as filtrarLancamentosDoMes,
-  totaisDoMes, sincronizarRegistro, type EntradaLancamento,
+  totaisDoMes, sincronizarRegistro, garantirCategoriasOutros, mesDetalhado,
+  type EntradaLancamento,
 } from '../domain/lancamentos';
 import {
   salvarOrcamento as upsertOrcamento, removerOrcamento as filtrarOrcamento,
@@ -494,33 +495,60 @@ export function usePatrimonio() {
     return registros.value.some(r => r.mes === mes && r.ano === ano && r.id !== ignorarId);
   }
 
-  function addRegistro(dados: Omit<RegistroMensal, 'id' | 'createdAt' | 'updatedAt'>): boolean {
-    if (mesOcupado(dados.mes, dados.ano)) return false;
-    const novo: RegistroMensal = {
-      ...dados,
-      id: generateId(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    registros.value = [...registros.value, novo];
-    _persist();
-    return true;
+  /** Ids das categorias "Outros" — garante que existam (e estejam ativas). */
+  function _idsOutros() {
+    const r = garantirCategoriasOutros(categorias.value, new Date().toISOString(), true);
+    const mudou = r.categorias.length !== categorias.value.length
+      || r.categorias.some((c, i) => c !== categorias.value[i]);
+    if (mudou) {
+      categorias.value = r.categorias;
+      _persistCategorias();
+    }
+    return r.ids;
   }
 
-  function updateRegistro(id: string, dados: Partial<Omit<RegistroMensal, 'id' | 'createdAt'>>): boolean {
-    const idx = registros.value.findIndex(r => r.id === id);
-    if (idx === -1) return false;
+  /**
+   * O mês tem lançamento em categorias além de "Outros"? Então ele se edita
+   * no Lançamento do mês, e não pelo lançamento rápido de totais.
+   */
+  function mesEhDetalhado(ano: number, mes: number): boolean {
+    const ids = garantirCategoriasOutros(categorias.value, '').ids;
+    return mesDetalhado(lancamentos.value, ids, ano, mes);
+  }
 
-    // Sem esta checagem, mover um registro para um mês já ocupado criava uma
-    // duplicata silenciosa — dois registros do mesmo mês somando em dobro.
-    const mes = dados.mes ?? registros.value[idx].mes;
-    const ano = dados.ano ?? registros.value[idx].ano;
-    if (mesOcupado(mes, ano, id)) return false;
+  /**
+   * Lançamento rápido: grava os totais do mês nas categorias "Outros" de
+   * receita e de despesa, e o RegistroMensal é derivado delas como qualquer
+   * outro mês. `anterior` é o mês original numa edição — se mudou, o mês
+   * antigo é esvaziado. Só vale para meses não detalhados.
+   */
+  function lancarTotaisMes(
+    dados: { mes: number; ano: number; ganhos: number; gastos: number; descricao?: string },
+    anterior?: { mes: number; ano: number }
+  ): boolean {
+    const mudouDeMes = !!anterior && (anterior.mes !== dados.mes || anterior.ano !== dados.ano);
+    const idAnterior = anterior
+      ? registros.value.find(r => r.mes === anterior.mes && r.ano === anterior.ano)?.id
+      : undefined;
+    if (mesOcupado(dados.mes, dados.ano, idAnterior)) return false;
+    if (mesEhDetalhado(dados.ano, dados.mes)) return false;
 
-    const atualizado = { ...registros.value[idx], ...dados, updatedAt: new Date().toISOString() };
-    const lista = [...registros.value];
-    lista[idx] = atualizado;
-    registros.value = lista;
+    const ids = _idsOutros();
+    if (mudouDeMes) {
+      salvarLancamentosMes(anterior!.ano, anterior!.mes, [
+        { categoriaId: ids.receita, valor: null },
+        { categoriaId: ids.despesa, valor: null },
+      ]);
+    }
+    salvarLancamentosMes(dados.ano, dados.mes, [
+      { categoriaId: ids.receita, valor: dados.ganhos },
+      { categoriaId: ids.despesa, valor: dados.gastos },
+    ]);
+
+    // A observação vive no registro, não nos lançamentos.
+    registros.value = registros.value.map(r =>
+      r.mes === dados.mes && r.ano === dados.ano ? { ...r, descricao: dados.descricao } : r
+    );
     _persist();
     return true;
   }
@@ -550,10 +578,12 @@ export function usePatrimonio() {
     storage.clearAllData();
     registros.value = [];
     objetivos.value = [];
-    categorias.value = [];
     lancamentos.value = [];
     orcamentos.value = [];
     config.value = storage.getConfig();
+    // Recomeça como uma instalação nova: só com as categorias "Outros".
+    categorias.value = garantirCategoriasOutros([], new Date().toISOString()).categorias;
+    _persistCategorias();
   }
 
   function recarregarDados() {
@@ -633,8 +663,8 @@ export function usePatrimonio() {
     copiarOrcamentosDoAno,
     visaoAnualDe,
     // CRUD
-    addRegistro,
-    updateRegistro,
+    lancarTotaisMes,
+    mesEhDetalhado,
     deleteRegistro,
     mesOcupado,
     // Config
