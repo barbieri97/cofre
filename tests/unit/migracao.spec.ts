@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { totaisDoMes } from '@/domain/lancamentos';
 import {
   migrarSchema, getConfig, getObjetivos, importarBackup,
   exportarBackup, saveRegistros, SCHEMA_VERSION,
+  getCategorias, getLancamentos, getOrcamentos, getRegistros,
 } from '@/services/storageService';
 
 const REGISTROS = [
@@ -187,5 +189,157 @@ describe('importarBackup', () => {
   it('rejeita arquivo sem registros', () => {
     expect(importarBackup('{"versao":"3"}').ok).toBe(false);
     expect(importarBackup('não é json').ok).toBe(false);
+  });
+});
+
+describe('migrarSchema — v3 → v4 (categorias e orçamento)', () => {
+  it('acrescenta a tolerância de desvio sem mexer no resto, de forma idempotente', () => {
+    localStorage.setItem('cofre_schema_version', '3');
+    localStorage.setItem('cofre_config', JSON.stringify({ patrimonioInicial: 500, primeiroUso: false }));
+    saveRegistros(REGISTROS);
+
+    migrarSchema();
+    migrarSchema();
+
+    const bruto = JSON.parse(localStorage.getItem('cofre_config')!);
+    expect(bruto.toleranciaDesvio).toBe(5);
+    expect(bruto.patrimonioInicial).toBe(500);
+    expect(getCategorias().map(c => c.id)).toEqual(['outros-receita', 'outros-despesa']);
+    expect(getLancamentos()).toHaveLength(4);
+    expect(localStorage.getItem('cofre_schema_version')).toBe('4');
+  });
+
+  it('preserva uma tolerância já gravada', () => {
+    localStorage.setItem('cofre_schema_version', '3');
+    localStorage.setItem('cofre_config', JSON.stringify({ patrimonioInicial: 0, toleranciaDesvio: 10 }));
+    migrarSchema();
+    expect(getConfig().toleranciaDesvio).toBe(10);
+  });
+
+  it('backup v3 importa descartando o estado atual e convertendo os totais', () => {
+    localStorage.setItem('cofre_categorias', JSON.stringify([{ id: 'lixo' }]));
+    const r = importarBackup(JSON.stringify({ versao: '3', config: { patrimonioInicial: 1 }, registros: REGISTROS, objetivos: [] }));
+    expect(r.ok).toBe(true);
+    expect(getCategorias().map(c => c.id)).toEqual(['outros-receita', 'outros-despesa']);
+    expect(getLancamentos()).toHaveLength(4);
+    expect(getRegistros().every(reg => reg.origem === 'categorias')).toBe(true);
+    expect(getOrcamentos()).toEqual([]);
+  });
+
+  it('round-trip de backup inclui categorias, lançamentos e orçamentos', () => {
+    const categorias = [{ id: 'c1', nome: 'Mercado', tipo: 'despesa', ativa: true, ordem: 0, criadoEm: '', atualizadoEm: '' }];
+    const lancamentos = [{ id: 'l1', categoriaId: 'c1', ano: 2024, mes: 1, valor: 800 }];
+    const orcamentos = [{ id: 'o1', categoriaId: 'c1', ano: 2024, valorAnual: 1200, distribuicao: 'uniforme', meses: new Array(12).fill(100), atualizadoEm: '' }];
+    saveRegistros(REGISTROS);
+    localStorage.setItem('cofre_categorias', JSON.stringify(categorias));
+    localStorage.setItem('cofre_lancamentos', JSON.stringify(lancamentos));
+    localStorage.setItem('cofre_orcamentos', JSON.stringify(orcamentos));
+    localStorage.setItem('cofre_schema_version', String(SCHEMA_VERSION));
+
+    const json = exportarBackup();
+    localStorage.clear();
+    expect(importarBackup(json).ok).toBe(true);
+
+    expect(getCategorias()).toEqual(categorias);
+    expect(getLancamentos()).toEqual(lancamentos);
+    expect(getOrcamentos()).toEqual(orcamentos);
+  });
+});
+
+describe('migrarSchema — totais manuais viram a categoria "Outros"', () => {
+  const MANUAIS = [
+    { id: 'a', mes: 1, ano: 2024, ganhos: 8000.37, gastos: 5000.1, descricao: 'jan', createdAt: '', updatedAt: '' },
+    { id: 'b', mes: 2, ano: 2024, ganhos: 0, gastos: 1200, createdAt: '', updatedAt: '' },
+    // duplicata do mesmo mês, possível em dados antigos
+    { id: 'c', mes: 3, ano: 2024, ganhos: 1000, gastos: 300, descricao: 'x', createdAt: '', updatedAt: '' },
+    { id: 'd', mes: 3, ano: 2024, ganhos: 500, gastos: 200, descricao: 'y', createdAt: '', updatedAt: '' },
+  ];
+  const saldo = (regs: { ganhos: number; gastos: number }[]) =>
+    regs.reduce((s, r) => s + r.ganhos - r.gastos, 0);
+
+  function semearV3(registros: unknown[] = MANUAIS) {
+    localStorage.setItem('cofre_schema_version', '3');
+    localStorage.setItem('cofre_config', JSON.stringify({ patrimonioInicial: 1000, primeiroUso: false }));
+    localStorage.setItem('cofre_registros', JSON.stringify(registros));
+  }
+
+  it('preserva o patrimônio ao centavo', () => {
+    semearV3();
+    migrarSchema();
+    expect(saldo(getRegistros())).toBeCloseTo(saldo(MANUAIS), 10);
+  });
+
+  it('cada mês vira um lançamento de receita e um de despesa em "Outros"', () => {
+    semearV3();
+    migrarSchema();
+    const categorias = getCategorias();
+    expect(categorias.map(c => [c.nome, c.tipo, c.ativa])).toEqual([
+      ['Outros', 'receita', true], ['Outros', 'despesa', true],
+    ]);
+    const lancamentos = getLancamentos();
+    for (const r of getRegistros()) {
+      expect(r.origem).toBe('categorias');
+      const t = totaisDoMes(lancamentos, categorias, r.ano, r.mes);
+      expect(t.receita).toBeCloseTo(r.ganhos, 10);
+      expect(t.despesa).toBeCloseTo(r.gastos, 10);
+    }
+    expect(getRegistros().find(r => r.mes === 1)!.descricao).toBe('jan');
+  });
+
+  it('total zero vira lançamento de zero, não campo vazio', () => {
+    semearV3();
+    migrarSchema();
+    const fev = getLancamentos().filter(l => l.ano === 2024 && l.mes === 2);
+    expect(fev).toHaveLength(2);
+    expect(fev.find(l => l.categoriaId === 'outros-receita')!.valor).toBe(0);
+  });
+
+  it('funde registros duplicados do mesmo mês somando os totais', () => {
+    semearV3();
+    migrarSchema();
+    const marco = getRegistros().filter(r => r.mes === 3);
+    expect(marco).toHaveLength(1);
+    expect(marco[0]).toMatchObject({ id: 'c', ganhos: 1500, gastos: 500, descricao: 'x · y' });
+    expect(getLancamentos().filter(l => l.mes === 3)).toHaveLength(2);
+  });
+
+  it('reaproveita uma categoria "Outros" que já exista', () => {
+    semearV3();
+    localStorage.setItem('cofre_categorias', JSON.stringify([
+      { id: 'meu', nome: ' outros ', tipo: 'despesa', ativa: true, ordem: 0, criadoEm: '', atualizadoEm: '' },
+    ]));
+    migrarSchema();
+    const despesas = getCategorias().filter(c => c.tipo === 'despesa');
+    expect(despesas.map(c => c.id)).toEqual(['meu']);
+    expect(getLancamentos().some(l => l.categoriaId === 'meu')).toBe(true);
+  });
+
+  it('é idempotente, inclusive se for interrompida e rodar de novo', () => {
+    semearV3();
+    migrarSchema();
+    const depois = { r: getRegistros(), c: getCategorias(), l: getLancamentos() };
+
+    // Simula uma interrupção antes de gravar a versão
+    localStorage.setItem('cofre_schema_version', '3');
+    migrarSchema();
+    migrarSchema();
+
+    expect(getRegistros()).toEqual(depois.r);
+    expect(getCategorias()).toEqual(depois.c);
+    expect(getLancamentos()).toEqual(depois.l);
+  });
+
+  it('converte registros antigos de quem nunca salvou a config', () => {
+    localStorage.setItem('cofre_registros', JSON.stringify(MANUAIS.slice(0, 1)));
+    migrarSchema();
+    expect(getRegistros()[0].origem).toBe('categorias');
+    expect(getLancamentos()).toHaveLength(2);
+  });
+
+  it('instalação nova nasce só com as categorias "Outros"', () => {
+    migrarSchema();
+    expect(getCategorias().map(c => c.id)).toEqual(['outros-receita', 'outros-despesa']);
+    expect(getRegistros()).toEqual([]);
+    expect(getLancamentos()).toEqual([]);
   });
 });

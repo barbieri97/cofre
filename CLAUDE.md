@@ -48,10 +48,24 @@ Ao taguear a partir de um commit já verde em `main`, o código já passou pela 
 
 App Vue 3 + Ionic empacotado com Capacitor. Sem banco: tudo em `localStorage`.
 
-O propósito define o modelo de dados: o usuário lança **um total de entradas e um total de
-saídas por mês**, sem categorias. `RegistroMensal` é a única entidade de fato, com
-`{mes, ano, ganhos, gastos}` — não existem transações individuais. Qualquer feature que
-pressuponha lançamentos avulsos ou categorias exige um modelo novo e uma migração.
+O propósito define o modelo de dados: os dados são **mensais** — não existem transações
+individuais. `RegistroMensal` (`{mes, ano, ganhos, gastos}`) é o que alimenta patrimônio,
+fôlego e análises, e é **sempre derivado de lançamentos por categoria** (`origem: 'categorias'`):
+
+- `Categoria` (`receita` | `despesa` | `transferencia`, `grupo` opcional, `ativa`, `ordem`).
+  Única por (nome, tipo). Com dados, é arquivada, nunca apagada; arquivada some de lançamentos
+  novos mas continua nos meses/anos em que tem dados (`src/domain/categorias.ts`).
+- `LancamentoMensal` — o total de uma categoria no mês, único por (categoria, ano, mês). Salvo
+  em lote por mês: vazio = sem lançamento, zero = zero lançado (`src/domain/lancamentos.ts`).
+  Salvar o mês **reescreve o `RegistroMensal`** com `origem: 'categorias'`: ganhos = Σ receitas,
+  gastos = Σ despesas. Transferências (aportes) não entram em gastos — continuam no patrimônio.
+- Duas categorias **"Outros"** (receita e despesa, ids `outros-receita`/`outros-despesa`) existem
+  desde a instalação. O formulário de total da aba Registros é um **lançamento rápido**: grava
+  ganhos e gastos nelas. Um mês com lançamento em qualquer outra categoria é "detalhado" e se
+  edita só no Lançamento do mês.
+- `Orcamento` — anual por (categoria, ano), com `meses[12]` materializado a cada save pelas
+  regras `uniforme` | `meses` | `manual`, calculadas em centavos para a soma bater exata
+  (`src/domain/orcamento.ts`, que também monta a visão anual e as cores de desvio).
 
 ### Três camadas
 
@@ -78,7 +92,8 @@ O singleton tem duas consequências práticas:
 
 ### Persistência e migrações
 
-Chaves: `cofre_registros`, `cofre_config`, `cofre_objetivos`, `cofre_schema_version`.
+Chaves: `cofre_registros`, `cofre_config`, `cofre_objetivos`, `cofre_categorias`,
+`cofre_lancamentos`, `cofre_orcamentos`, `cofre_schema_version`.
 
 `migrarSchema()` roda **uma vez em `src/main.ts`, antes do mount**. Os getters são leitura
 pura e nunca gravam. Para mudar o formato dos dados:
@@ -86,6 +101,10 @@ pura e nunca gravam. Para mudar o formato dos dados:
 1. Suba `SCHEMA_VERSION` em `storageService.ts`.
 2. Adicione uma função `migrarNparaN+1` e encadeie-a em `migrarSchema()`.
 3. Garanta idempotência — há teste para isso em `tests/unit/migracao.spec.ts`.
+
+A v3 → v4 converte cada total manual em lançamentos nas categorias "Outros", copiando os valores
+sem arredondar e fundindo meses duplicados — o patrimônio não muda. Na Visão anual, uma linha sem
+orçamento no ano não é colorida, para o histórico migrado não aparecer todo como desvio.
 
 `importarBackup()` grava o payload cru, marca a versão declarada no arquivo e chama
 `migrarSchema()`, de modo que backups antigos são convertidos ao restaurar.
@@ -109,8 +128,11 @@ uma sobrescrita manual e sempre vence.
 
 ### Navegação
 
-Quatro abas (`src/views/TabsPage.vue`): Início · Registros · Análise · Objetivos.
-**Configurações fica fora da tab bar** — só pela engrenagem no header da Home.
+Cinco abas (`src/views/TabsPage.vue`): Início · Registros · Análise · Orçamento · Objetivos.
+**Configurações fica fora da tab bar** — só pela engrenagem no header da Home; Categorias
+(`/tabs/configuracoes/categorias`) é aberta a partir dela. Orçamento tem os segmentos Visão
+anual e Planejamento; `/tabs/orcamento/lancamento/:ano/:mes` é o Lançamento do mês, aberto pelo
+cabeçalho da matriz, pela aba Registros e por um mês com `origem: 'categorias'`.
 `/tabs/graficos`, `/tabs/estatisticas` e `/tabs/metas` são redirects das rotas da v1.
 
 O filtro de período é global (no composable) e vale para Home e Análise › Período.

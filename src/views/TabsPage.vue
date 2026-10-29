@@ -18,6 +18,11 @@
           <ion-label>Análise</ion-label>
         </ion-tab-button>
 
+        <ion-tab-button tab="orcamento" href="/tabs/orcamento">
+          <ion-icon :icon="pieChartOutline" />
+          <ion-label>Orçamento</ion-label>
+        </ion-tab-button>
+
         <ion-tab-button tab="objetivos" href="/tabs/objetivos">
           <ion-icon :icon="flagOutline" />
           <ion-label>Objetivos</ion-label>
@@ -32,7 +37,9 @@ import {
   IonPage, IonTabs, IonTabBar, IonTabButton,
   IonIcon, IonLabel, IonRouterOutlet
 } from '@ionic/vue';
-import { homeOutline, listOutline, analyticsOutline, flagOutline } from 'ionicons/icons';
+import {
+  homeOutline, listOutline, analyticsOutline, pieChartOutline, flagOutline,
+} from 'ionicons/icons';
 </script>
 
 <style scoped>

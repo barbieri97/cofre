@@ -4,6 +4,15 @@
       <ion-toolbar>
         <ion-title>Registros Mensais</ion-title>
         <ion-buttons slot="end">
+          <ion-button
+            v-if="categorias.length"
+            id="btn-lancar-por-categoria"
+            fill="clear"
+            color="primary"
+            :router-link="`/tabs/orcamento/lancamento/${hoje.getFullYear()}/${hoje.getMonth() + 1}`"
+          >
+            <ion-icon :icon="pricetagsOutline" slot="icon-only" />
+          </ion-button>
           <ion-button id="btn-add-registro-toolbar" fill="clear" color="primary" @click="abrirModal()">
             <ion-icon :icon="addOutline" slot="icon-only" />
           </ion-button>
@@ -84,6 +93,9 @@
                     <span class="ri-mes-nome">{{ MESES_ABREV[reg.mes - 1] }}</span>
                     <span class="ri-mes-ano">{{ reg.ano }}</span>
                   </div>
+                  <span v-if="mesEhDetalhado(reg.ano, reg.mes)" class="ri-origem">
+                    <ion-icon :icon="pricetagsOutline" /> por categoria
+                  </span>
                   <div class="ri-saldo" :class="(reg.ganhos - reg.gastos) >= 0 ? 'positivo' : 'negativo'">
                     <ion-icon :icon="(reg.ganhos - reg.gastos) >= 0 ? trendingUpOutline : trendingDownOutline" />
                     {{ formatCurrency(reg.ganhos - reg.gastos) }}
@@ -152,7 +164,7 @@
     <ion-alert
       :is-open="alertDeleteAberto"
       header="Excluir registro"
-      :message="`Deseja excluir o registro de ${registroParaDeletar ? MESES_ABREV[registroParaDeletar.mes - 1] + '/' + registroParaDeletar.ano : ''}?`"
+      :message="mensagemDelete"
       :buttons="botoesAlert"
       @did-dismiss="alertDeleteAberto = false"
     />
@@ -169,15 +181,20 @@ import {
 } from '@ionic/vue';
 import {
   addOutline, calendarOutline, createOutline, trashOutline,
-  chatbubbleOutline, trendingUpOutline, trendingDownOutline
+  chatbubbleOutline, trendingUpOutline, trendingDownOutline, pricetagsOutline
 } from 'ionicons/icons';
+import { useRouter } from 'vue-router';
 import { usePatrimonio } from '../composables/usePatrimonio';
 import RegistroModal from '../components/RegistroModal.vue';
 import EstadoVazio from '../components/EstadoVazio.vue';
 import type { RegistroMensal } from '../types';
 import { MESES_ABREV, formatCurrency } from '../types';
 
-const { registros, lacunas, addRegistro, updateRegistro, deleteRegistro } = usePatrimonio();
+const {
+  registros, lacunas, categorias, lancarTotaisMes, mesEhDetalhado, deleteRegistro,
+} = usePatrimonio();
+const router = useRouter();
+const hoje = new Date();
 
 // ── Modal ─────────────────────────────────────────────────────
 const modalAberto = ref(false);
@@ -193,17 +210,20 @@ function fecharModal() {
   registroEditando.value = null;
 }
 
+/** Um mês detalhado por categoria se edita no Lançamento do mês, não no total. */
 function editarRegistro(reg: RegistroMensal) {
   fecharSliding(reg.id);
+  if (mesEhDetalhado(reg.ano, reg.mes)) {
+    router.push(`/tabs/orcamento/lancamento/${reg.ano}/${reg.mes}`);
+    return;
+  }
   abrirModal(reg);
 }
 
 function salvarRegistro(dados: Omit<RegistroMensal, 'id' | 'createdAt' | 'updatedAt'>) {
-  if (registroEditando.value) {
-    updateRegistro(registroEditando.value.id, dados);
-  } else {
-    addRegistro(dados);
-  }
+  // Lançamento rápido: os totais vão para as categorias "Outros" do mês.
+  const anterior = registroEditando.value;
+  lancarTotaisMes(dados, anterior ? { mes: anterior.mes, ano: anterior.ano } : undefined);
   fecharModal();
 }
 
@@ -216,6 +236,15 @@ function confirmarDelete(reg: RegistroMensal) {
   registroParaDeletar.value = reg;
   alertDeleteAberto.value = true;
 }
+
+const mensagemDelete = computed(() => {
+  const r = registroParaDeletar.value;
+  if (!r) return '';
+  const label = `${MESES_ABREV[r.mes - 1]}/${r.ano}`;
+  return mesEhDetalhado(r.ano, r.mes)
+    ? `Deseja excluir ${label}? Os lançamentos por categoria deste mês também serão apagados.`
+    : `Deseja excluir o registro de ${label}?`;
+});
 
 const botoesAlert = [
   { text: 'Cancelar', role: 'cancel', handler: () => { registroParaDeletar.value = null; } },
@@ -315,6 +344,11 @@ function barWidth(valor: number, reg: RegistroMensal): number {
 .ri-content { padding: 14px 16px; width: 100%; }
 .ri-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .ri-mes-badge { display: flex; flex-direction: column; }
+.ri-origem {
+  display: inline-flex; align-items: center; gap: 4px; margin-right: auto; margin-left: 12px;
+  font-size: var(--cofre-fs-2xs); font-weight: 600; color: var(--cofre-accent-light);
+  background: var(--cofre-accent-muted); border-radius: var(--cofre-radius-full); padding: 2px 8px;
+}
 .ri-mes-nome { font-size: var(--cofre-fs-base); font-weight: 800; color: var(--cofre-text); line-height: 1; }
 .ri-mes-ano { font-size: var(--cofre-fs-xs); color: var(--cofre-text-muted); margin-top: 2px; }
 .ri-saldo {
